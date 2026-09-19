@@ -91,6 +91,8 @@ import online.kingdomkeys.kingdomkeys.effects.ModMobEffects;
 import online.kingdomkeys.kingdomkeys.entity.GummiShipEntity;
 import online.kingdomkeys.kingdomkeys.entity.block.GummiCoreTileEntity;
 import online.kingdomkeys.kingdomkeys.entity.block.GummiHangarTileEntity;
+import online.kingdomkeys.kingdomkeys.entity.mob.ApprenticeEntity;
+import online.kingdomkeys.kingdomkeys.entity.mob.ForetellerEntity;
 import online.kingdomkeys.kingdomkeys.item.*;
 import online.kingdomkeys.kingdomkeys.item.organization.IOrgWeapon;
 import online.kingdomkeys.kingdomkeys.lib.*;
@@ -100,6 +102,7 @@ import online.kingdomkeys.kingdomkeys.limit.ModLimits;
 import online.kingdomkeys.kingdomkeys.magic.Magic;
 import online.kingdomkeys.kingdomkeys.magic.MagicData;
 import online.kingdomkeys.kingdomkeys.magic.ModMagic;
+import online.kingdomkeys.kingdomkeys.menu.BagInventory;
 import online.kingdomkeys.kingdomkeys.menu.PauldronInventory;
 import online.kingdomkeys.kingdomkeys.network.PacketHandler;
 import online.kingdomkeys.kingdomkeys.network.stc.*;
@@ -255,36 +258,29 @@ public class Utils {
 		return -1;
 	}
 
-	public static int getCardsBagSlot(Player player, BagItem.Type type) {
-		NonNullList<ItemStack> items = player.getInventory().items;
-		for (int i = 0, itemsSize = items.size(); i < itemsSize; i++) {
-			ItemStack stack = items.get(i);
-			Item item = null;
-			if(type == BagItem.Type.MAGICS_BAG) {
-				item = ModItems.magicsBag.get();
-			} else if(type == BagItem.Type.CARDS_BAG){
-				item = ModItems.cardsBag.get();
-			} else if(type == BagItem.Type.SHOTLOCKS_BAG){
-				item = ModItems.shotlocksBag.get();
-			}
+	public static Item getBagItem(BagItem.Type type) {
+		return switch (type) {
+			case SYNTHESIS_BAG -> ModItems.synthesisBag.get();
+			case SPELLS_BAG -> ModItems.magicsBag.get();
+			case CARDS_BAG -> ModItems.cardsBag.get();
+			case SHOTLOCKS_BAG -> ModItems.shotlocksBag.get();
+			case KEYCHAINS_BAG -> ModItems.keychainsBag.get();
+			case CONSUMABLES_BAG -> ModItems.consumablesBag.get();
+		};
+	}
 
-			if (stack.is(item)) {
+	public static int getBagSlot(Player player, BagItem.Type type) {
+		NonNullList<ItemStack> items = player.getInventory().items;
+		Item item = getBagItem(type);
+
+		for (int i = 0, itemsSize = items.size(); i < itemsSize; i++) {
+			if (items.get(i).is(item)) {
 				return i;
 			}
 		}
 		return -1;
 	}
 
-	/**
-	 * Whether magic cooldowns are tracked per magic instead of as one shared timer.
-	 *
-	 * <p>Server config, so it is read through {@code isLoaded} - it is queried from client rendering
-	 * too, where the spec may not be up yet on the first frames after joining.</p>
-	 */
-	/**
-	 * The magic bound to a shortcut slot, or null if that slot is empty or out of range. Needed because
-	 * the cooldown check has to know which magic is about to be cast.
-	 */
 	public static ResourceLocation getShortcutMagic(PlayerData playerData, int index) {
 		if (playerData == null || !playerData.getShortcutsMap().containsKey(index)) {
 			return null;
@@ -305,16 +301,9 @@ public class Utils {
 
 	public static boolean hasOnlyOneBag(Player player, BagItem.Type type) {
 		boolean found = false;
-		for (ItemStack stack : player.getInventory().items) {
-			Item item = null;
-			if(type == BagItem.Type.MAGICS_BAG) {
-				item = ModItems.magicsBag.get();
-			} else if(type == BagItem.Type.CARDS_BAG){
-				item = ModItems.cardsBag.get();
-			} else if(type == BagItem.Type.SHOTLOCKS_BAG){
-				item = ModItems.shotlocksBag.get();
-			}
+		Item item = getBagItem(type);
 
+		for (ItemStack stack : player.getInventory().items) {
 			if (stack.is(item)) {
 				if (found) {
 					return false;
@@ -326,11 +315,258 @@ public class Utils {
 		return found;
 	}
 
-	public static int getSavepointPercent(int ticks) {
-		int res = Math.round(100 - (((ticks-1) /(20F-1F)) * 100F));
-		if(res == 0)
-			res = 1;
-		return res;
+	public static int getBagSlots(ItemStack bag) {
+		return switch (bag.getOrDefault(ModComponents.BAG_LEVEL, 0)) {
+			case 0 -> 18;
+			case 1 -> 36;
+			case 2 -> 54;
+			case 3 -> 72;
+			default -> 0;
+		};
+	}
+
+	public static BagItem.Type getBagTypeFor(ItemStack stack) {
+		if (stack.isEmpty()) {
+			return null;
+		}
+
+		for (BagItem.Type type : BagItem.Type.values()) {
+			if (getBagItem(type) instanceof BagItem bag && bag.getValidator().test(stack)) {
+				return type;
+			}
+		}
+
+		return null;
+	}
+
+	public static void addToBagOrInventory(Player player, ItemStack stack) {
+		ItemStack remaining = insertIntoBags(player, stack, false);
+
+		if (!remaining.isEmpty()) {
+			player.getInventory().add(remaining);
+		}
+	}
+
+	// Simulate only returns the remainer but without putting into the bag
+	public static ItemStack insertIntoBag(ItemStack bag, ItemStack stack, boolean simulate) {
+		if (stack.isEmpty() || !(bag.getCapability(Capabilities.ItemHandler.ITEM) instanceof BagInventory inv)) {
+			return stack;
+		}
+
+		ItemStack remaining = stack;
+		int slots = getBagSlots(bag);
+
+		for (int i = 0; i < slots && !remaining.isEmpty(); i++) {
+			remaining = inv.insertItem(i, remaining, simulate);
+		}
+
+		return remaining;
+	}
+
+	public static ItemStack insertIntoBags(Player player, ItemStack stack, boolean simulate) {
+		BagItem.Type type = getBagTypeFor(stack);
+
+		if (type == null) {
+			return stack;
+		}
+
+		Item bagItem = getBagItem(type);
+		ItemStack remaining = stack;
+		Inventory inventory = player.getInventory();
+
+		for (int i = 0; i < inventory.getContainerSize() && !remaining.isEmpty(); i++) {
+			ItemStack bag = inventory.getItem(i);
+
+			if (bag.is(bagItem)) {
+				remaining = insertIntoBag(bag, remaining, simulate);
+			}
+		}
+
+		return remaining;
+	}
+
+	public static boolean hasRoomFor(Player player, ItemStack stack) {
+		if (stack.isEmpty()) {
+			return true;
+		}
+
+		return player.getInventory().getFreeSlot() > -1 || insertIntoBags(player, stack, true).isEmpty();
+	}
+
+	public static BagInventory getKeychainsBag(Player player) {
+		return getBagInventory(player, BagItem.Type.KEYCHAINS_BAG);
+	}
+
+	public static BagInventory getBagInventory(Player player, BagItem.Type type) {
+		if (!hasOnlyOneBag(player, type)) {
+			return null;
+		}
+
+		ItemStack bag = getItemInInventory(player, getBagItem(type));
+
+		return !bag.isEmpty() && bag.getCapability(Capabilities.ItemHandler.ITEM) instanceof BagInventory inv ? inv : null;
+	}
+
+	public static int getFreeBagSlot(Player player, BagItem.Type type) {
+		if (!hasOnlyOneBag(player, type)) {
+			return -1;
+		}
+
+		ItemStack bag = getItemInInventory(player, getBagItem(type));
+
+		if (bag.isEmpty() || !(bag.getCapability(Capabilities.ItemHandler.ITEM) instanceof BagInventory inv)) {
+			return -1;
+		}
+
+		int slots = Math.min(getBagSlots(bag), inv.getSlots());
+
+		for (int i = 0; i < slots; i++) {
+			if (inv.getStackInSlot(i).isEmpty()) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+	// Disabled RN, it's for AT items maybe
+	public static ItemStack takeFromBag(Player player, BagItem.Type type, Item item) {
+		BagInventory bag = getBagInventory(player, type);
+
+		if (bag == null || item == null) {
+			return ItemStack.EMPTY;
+		}
+
+		for (int i = 0; i < bag.getSlots(); i++) {
+			ItemStack stack = bag.getStackInSlot(i);
+
+			if (!stack.isEmpty() && stack.getItem() == item) {
+				bag.setStackInSlot(i, ItemStack.EMPTY);
+				return stack;
+			}
+		}
+
+		return ItemStack.EMPTY;
+	}
+
+	public static Set<UUID> getBagKeychainIDs(Player player) {
+		Set<UUID> ids = new HashSet<>();
+		BagInventory bag = getKeychainsBag(player);
+
+		if (bag == null) {
+			return ids;
+		}
+
+		for (int i = 0; i < bag.getSlots(); i++) {
+			UUID id = getKeybladeID(bag.getStackInSlot(i));
+
+			if (id != null) {
+				ids.add(id);
+			}
+		}
+
+		return ids;
+	}
+
+	public static List<ItemStack> getAllKeychains(Player player, PlayerData playerData) {
+		List<ItemStack> keychains = new ArrayList<>();
+
+		for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+			ItemStack stack = player.getInventory().getItem(i);
+
+			if (stack.getItem() instanceof KeychainItem keychain && keychain.getKeyblade() != null) {
+				keychains.add(stack);
+			}
+		}
+
+		BagInventory bag = getKeychainsBag(player);
+
+		if (bag != null) {
+			for (int i = 0; i < bag.getSlots(); i++) {
+				ItemStack stack = bag.getStackInSlot(i);
+
+				if (stack.getItem() instanceof KeychainItem keychain && keychain.getKeyblade() != null) {
+					keychains.add(stack);
+				}
+			}
+		}
+
+		if (playerData != null) {
+			for (ItemStack stack : playerData.getEquippedKeychains().values()) {
+				if (!stack.isEmpty()) {
+					keychains.add(stack);
+				}
+			}
+		}
+
+		return keychains;
+	}
+
+	public static boolean storeKeychain(Player player, PlayerData playerData, ItemStack updated) {
+		UUID id = getKeybladeID(updated);
+
+		if (id == null) {
+			return false;
+		}
+
+		if (playerData != null) {
+			for (Entry<ResourceLocation, ItemStack> entry : playerData.getEquippedKeychains().entrySet()) {
+				if (id.equals(getKeybladeID(entry.getValue()))) {
+					playerData.equipKeychain(entry.getKey(), updated);
+					return true;
+				}
+			}
+		}
+
+		for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+			if (id.equals(getKeybladeID(player.getInventory().getItem(i)))) {
+				player.getInventory().setItem(i, updated);
+				return true;
+			}
+		}
+
+		BagInventory bag = getKeychainsBag(player);
+		if (bag != null) {
+			for (int i = 0; i < bag.getSlots(); i++) {
+				if (id.equals(getKeybladeID(bag.getStackInSlot(i)))) {
+					bag.setStackInSlot(i, updated);
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	public static final int SAVEPOINT_START = 24;
+	public static final int SAVEPOINT_STEP = 4;
+	public static final int SAVEPOINT_MIN = 1;
+
+	public static final int SAVEPOINT_UPGRADES = countSavepointUpgrades();
+
+	private static int countSavepointUpgrades() {
+		int value = SAVEPOINT_START;
+		int upgrades = 0;
+
+		while (value > SAVEPOINT_MIN) {
+			value = Math.max(value - SAVEPOINT_STEP, SAVEPOINT_MIN);
+			upgrades++;
+		}
+
+		return upgrades;
+	}
+
+	public static int getSavepointPercent(int value) {
+		if (value >= SAVEPOINT_START) {
+			return 0;
+		}
+
+		if (value <= SAVEPOINT_MIN) {
+			return 100;
+		}
+
+		int done = (SAVEPOINT_START - value + SAVEPOINT_STEP - 1) / SAVEPOINT_STEP;
+		return Math.round(done * 100F / SAVEPOINT_UPGRADES);
 	}
 
 	public static final ResourceLocation mobLevelHPModifier = KingdomKeys.rl("mob_level_hp");
@@ -1481,6 +1717,19 @@ public class Utils {
 		return Math.min(Math.max(value, min), max);
 	}
 
+	/** Pseudo-random keyblade attatched to the player */
+	public static final ResourceLocation RANDOM_STARTER = KingdomKeys.rl("random_starter");
+
+	/** Formula for the random keyblade based on the player's UUID */
+	public static ResourceLocation starterFor(UUID player, List<ResourceLocation> candidates) {
+		if (player == null || candidates == null || candidates.isEmpty()) {
+			return null;
+		}
+
+		long num = player.getMostSignificantBits() ^ player.getLeastSignificantBits();
+		return candidates.get(Math.floorMod(num, candidates.size()));
+	}
+
 	/**
 	 * Method for generating random integer between the 2 parameters, The order of
 	 * min and max do not matter.
@@ -1735,9 +1984,9 @@ public class Utils {
 		return elList;
 	}
 
-	public static List<Entity> removePartyMembersFromList(Player player, List<Entity> list) {
-		list.remove(player);
-		return removeAllies(player, list);
+	public static List<Entity> removePartyMembersFromList(@Nullable Entity caster, List<Entity> list) {
+		list.remove(caster);
+		return removeAllies(caster, list);
 	}
 
 	public static boolean anyPartyMemberOnExcept(Player player, Party p, ServerLevel level) {
@@ -1755,10 +2004,10 @@ public class Utils {
 		return false;
 	}
 
-	public static List<LivingEntity> getLivingEntitiesInRadiusExcludingParty(LivingEntity player, float radius) {
-		List<Entity> list = player.level().getEntities(player, player.getBoundingBox().inflate(radius), Entity::isAlive);
-		list.remove(player);
-		removeAllies(player, list);
+	public static List<LivingEntity> getLivingEntitiesInRadiusExcludingParty(Entity caster, float radius) {
+		List<Entity> list = caster.level().getEntities(caster, caster.getBoundingBox().inflate(radius), Entity::isAlive);
+		list.remove(caster);
+		removeAllies(caster, list);
 
 		List<LivingEntity> elList = new ArrayList<LivingEntity>();
 		for (Entity e : list) {
@@ -1773,17 +2022,17 @@ public class Utils {
 	/**
 	 * Gets entities in radius from the entity param
 	 *
-	 * @param player  to ignore from the list
+	 * @param caster  to ignore from the list, along with anyone on its side
 	 * @param entity  where to check with radius
 	 * @param radiusX
 	 * @param radiusY
 	 * @param radiusZ
 	 * @return
 	 */
-	public static List<LivingEntity> getLivingEntitiesInRadiusExcludingParty(Player player, Entity entity, float radiusX, float radiusY, float radiusZ) {
-		List<Entity> list = player.level().getEntities(player, entity.getBoundingBox().inflate(radiusX, radiusY, radiusZ), Entity::isAlive);
-		list.remove(player);
-		removeAllies(player, list);
+	public static List<LivingEntity> getLivingEntitiesInRadiusExcludingParty(Entity caster, Entity entity, float radiusX, float radiusY, float radiusZ) {
+		List<Entity> list = caster.level().getEntities(caster, entity.getBoundingBox().inflate(radiusX, radiusY, radiusZ), Entity::isAlive);
+		list.remove(caster);
+		removeAllies(caster, list);
 
 		list.remove(entity);
 
@@ -2029,6 +2278,30 @@ public class Utils {
 		return getArmorsStat(playerData.getEquippedArmors(), type);
 	}
 
+	public static Ability getConflictingAbility(PlayerData playerData, Ability ability) {
+		if (ability == null || ability.getExclusionGroup() == null) {
+			return null;
+		}
+
+		for (Entry<ResourceLocation, int[]> entry : playerData.getAbilityMap().entrySet()) {
+			if (entry.getValue()[1] == 0) { // nothing of this one is actually equipped
+				continue;
+			}
+
+			Ability equipped = ModAbilities.registry.get(entry.getKey());
+
+			if (ability.conflictsWith(equipped)) {
+				return equipped;
+			}
+		}
+
+		return null;
+	}
+
+	public static boolean canEquipAbility(PlayerData playerData, Ability ability) {
+		return getConflictingAbility(playerData, ability) == null;
+	}
+
 	public static int getConsumedAP(PlayerData playerData) {
 		int ap = 0;
 		LinkedHashMap<ResourceLocation, int[]> map = playerData.getAbilityMap();
@@ -2234,6 +2507,10 @@ public class Utils {
 			return false;
 		}
 
+		if (target instanceof ForetellerEntity || target instanceof ApprenticeEntity) {
+			return false;
+		}
+
 		// Anyone outside a party has no allies to spare, and a party with friendly fire on has decided it has none either
 		if (party == null || party.getFriendlyFire()) {
 			return true;
@@ -2245,10 +2522,6 @@ public class Utils {
 
 	public static <T extends Entity> List<T> removeAllies(@Nullable Entity attacker, List<T> list) {
 		Party party = getParty(attacker);
-
-		if (party == null || party.getFriendlyFire()) {
-			return list;
-		}
 
 		list.removeIf(target -> !canHarm(party, target));
 
@@ -2323,17 +2596,14 @@ public class Utils {
 		playerData.setMaxAccessories(0);
 		playerData.setMaxArmors(0);
 		playerData.setMaxMagics(0);
+		playerData.setMaxItems(0);
 
 		playerData.clearAbilities();
 		SoAState.applyStatsForChoices(player, playerData, false);
-
-		playerData.equipShotlock(net.minecraft.world.item.ItemStack.EMPTY);
-
-		// playerData.addAbility(Strings.zeroExp, false);
 	}
 
 	/**
-	 * Recalculate drive form levels and permanent abilities and shotlocks
+	 * Recalculate drive form levels, permanent abilities and shotlocks
 	 *
 	 * @param playerData
 	 * @param player
@@ -2445,6 +2715,21 @@ public class Utils {
 
 	public static void reviveFromKO(LivingEntity entity) {
 		entity.removeEffect(ModMobEffects.KO);
+	}
+
+	public static void knockOut(Player player) {
+		if (player.hasEffect(ModMobEffects.KO)) {
+			return;
+		}
+
+		player.removeAllEffects();
+		player.setHealth(player.getMaxHealth());
+		player.invulnerableTime = 40;
+		player.getFoodData().setFoodLevel(10);
+		player.getFoodData().setExhaustion(0);
+		player.getFoodData().setSaturation(0);
+		player.addEffect(new MobEffectInstance(ModMobEffects.KO, MobEffectInstance.INFINITE_DURATION, 0, false, false, false));
+		player.level().playSound(null, player.blockPosition(), ModSounds.playerDeathHardcore.get(), SoundSource.PLAYERS);
 	}
 
 	public static int getRandomMobLevel(Player player) {
@@ -2811,6 +3096,14 @@ public class Utils {
 		Arrays.stream(items).forEach(stack -> {
 			// tryToAddItem shrinks it, when it fails it returns the stack that was left
 			ItemStack remaining = stack.copy();
+
+			// La bolsa va antes que el inventario: si el item tiene bolsa, es donde el jugador espera
+			// encontrarlo. Lo que no quepa sigue por el camino de siempre.
+			remaining = insertIntoBags(player, remaining, false);
+
+			if (remaining.isEmpty()) {
+				return;
+			}
 
 			if (!tryToAddItem(player, remaining, false)) {
 				//no space so add to overflow

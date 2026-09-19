@@ -23,6 +23,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
@@ -33,6 +34,7 @@ import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import online.kingdomkeys.kingdomkeys.ability.AbilityDataLoader;
 import online.kingdomkeys.kingdomkeys.ability.ModAbilities;
 import online.kingdomkeys.kingdomkeys.advancements.ModAdvancements;
 import online.kingdomkeys.kingdomkeys.api.event.client.CommandMenuEvent;
@@ -40,11 +42,13 @@ import online.kingdomkeys.kingdomkeys.block.ModBlocks;
 import online.kingdomkeys.kingdomkeys.block.ModEnergy;
 import online.kingdomkeys.kingdomkeys.client.gui.elements.HUD.HUDElement;
 import online.kingdomkeys.kingdomkeys.client.gui.overlay.CommandMenuGui;
+import online.kingdomkeys.kingdomkeys.client.particles.ModParticles;
 import online.kingdomkeys.kingdomkeys.client.sound.ModSounds;
 import online.kingdomkeys.kingdomkeys.command.ConvertOldForgeDataCommand;
 import online.kingdomkeys.kingdomkeys.command.ModCommands;
 import online.kingdomkeys.kingdomkeys.config.ModConfigs;
 import online.kingdomkeys.kingdomkeys.data.ModData;
+import online.kingdomkeys.kingdomkeys.dialogue.ModDialogue;
 import online.kingdomkeys.kingdomkeys.driveform.DriveFormDataLoader;
 import online.kingdomkeys.kingdomkeys.driveform.ModDriveForms;
 import online.kingdomkeys.kingdomkeys.effects.ModMobEffects;
@@ -53,6 +57,7 @@ import online.kingdomkeys.kingdomkeys.handler.EntityEvents;
 import online.kingdomkeys.kingdomkeys.integration.epicfight.init.ClientEpicFightIntegration;
 import online.kingdomkeys.kingdomkeys.integration.epicfight.init.EpicFightIntegration;
 import online.kingdomkeys.kingdomkeys.integration.wildfire_gender.KKWildFireGender;
+import online.kingdomkeys.kingdomkeys.item.ApprenticeCauldron;
 import online.kingdomkeys.kingdomkeys.item.ModArmorMaterials;
 import online.kingdomkeys.kingdomkeys.item.ModComponents;
 import online.kingdomkeys.kingdomkeys.item.ModItems;
@@ -71,6 +76,7 @@ import online.kingdomkeys.kingdomkeys.savepoint.SavePointDataLoader;
 import online.kingdomkeys.kingdomkeys.shotlock.ModShotlocks;
 import online.kingdomkeys.kingdomkeys.shotlock.ShotlockDataLoader;
 import online.kingdomkeys.kingdomkeys.shotlock.minigame.ShotlockMinigameHandler;
+import online.kingdomkeys.kingdomkeys.story.ForetellerVisit;
 import online.kingdomkeys.kingdomkeys.synthesis.keybladeforge.KeybladeDataLoader;
 import online.kingdomkeys.kingdomkeys.synthesis.melding.MeldingDataLoader;
 import online.kingdomkeys.kingdomkeys.synthesis.recipe.RecipeDataLoader;
@@ -78,8 +84,10 @@ import online.kingdomkeys.kingdomkeys.synthesis.shop.ShopListDataLoader;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.names.NamesListLoader;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.sell.SellListDataLoader;
 import online.kingdomkeys.kingdomkeys.util.Utils;
+import online.kingdomkeys.kingdomkeys.world.DialogueHandler;
 import online.kingdomkeys.kingdomkeys.world.MiniCO;
 import online.kingdomkeys.kingdomkeys.world.StruggleHandler;
+import online.kingdomkeys.kingdomkeys.world.TrainingHandler;
 import online.kingdomkeys.kingdomkeys.world.dimension.ModDimensions;
 import online.kingdomkeys.kingdomkeys.world.dimension.castle_oblivion.CastleOblivionHandler;
 import online.kingdomkeys.kingdomkeys.world.dimension.castle_oblivion.system.registry.ModEncounterTypes;
@@ -92,8 +100,8 @@ import online.kingdomkeys.kingdomkeys.world.worldmap.WorldMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Supplier;
 
 @Mod("kingdomkeys")
@@ -137,6 +145,7 @@ public class KingdomKeys {
 		ModBlocks.BLOCKS.register(modEventBus);
 		ModItems.ITEMS.register(modEventBus);
 		ModSounds.SOUNDS.register(modEventBus);
+		ModParticles.PARTICLES.register(modEventBus);
 		ModEntities.TILE_ENTITIES.register(modEventBus);
 		ModMenus.MENUS.register(modEventBus);
 		ModLootModifier.LOOT_MODIFIERS.register(modEventBus);
@@ -153,12 +162,15 @@ public class KingdomKeys {
 		ModJsonRegistries.JSON_REGISTRIES.register(modEventBus);
 		ModRoomModifiers.ROOM_MODIFIERS.register(modEventBus);
 		ModEncounterTypes.ENCOUNTER_TYPES.register(modEventBus);
+		ModDialogue.DIALOGUE_CONDITIONS.register(modEventBus);
+		ModDialogue.DIALOGUE_ACTIONS.register(modEventBus);
 		ModData.ATTACHMENT_TYPES.register(modEventBus);
 		ModComponents.COMPONENTS.register(modEventBus);
 		ModArmorMaterials.ARMOR_MATERIALS.register(modEventBus);
 
 		ModAdvancements.TRIGGERS.register(modEventBus);
 
+		modEventBus.addListener(this::commonSetup);
 		modEventBus.addListener(this::modLoaded);
 		modEventBus.addListener(ModMenus::registerCapabilities);
 		modEventBus.addListener(ModEnergy::registerCapabilities);
@@ -172,7 +184,6 @@ public class KingdomKeys {
 		if (ModList.get().isLoaded("epicfight")) {
 			efmLoaded = true;
 			EpicFightIntegration.initIntegration(modEventBus);
-			// NeoForge.EVENT_BUS.register(new EpicFightEvents());
 		}
 
 		if (ModList.get().isLoaded("wildfire_gender")) {
@@ -207,13 +218,19 @@ public class KingdomKeys {
 		NeoForge.EVENT_BUS.register(new MiniCO());
 		NeoForge.EVENT_BUS.register(new StruggleHandler());
 		NeoForge.EVENT_BUS.register(new ShotlockMinigameHandler());
+		NeoForge.EVENT_BUS.register(new TrainingHandler());
+		NeoForge.EVENT_BUS.register(new DialogueHandler());
+		NeoForge.EVENT_BUS.register(new ForetellerVisit());
+	}
+
+	private void commonSetup(final FMLCommonSetupEvent event) {
+		event.enqueueWork(ApprenticeCauldron::register);
 	}
 
 	private void modLoaded(final FMLLoadCompleteEvent event) {
 		if (FMLEnvironment.dist.isClient()) {
 			if (ModList.get().isLoaded("epicfight")) {
 				ClientEpicFightIntegration.init();
-				//ModList.get().getModContainerById(KingdomKeys.MODID).get().getEventBus().addListener(EpicFightRendering::patchedRenderersEventModify);
 			}
 			NeoForge.EVENT_BUS.post(new CommandMenuEvent.Construct(CommandMenuGui.INSTANCE));
 			HUDElement.REGISTRY.forEach(HUDElement::loadFromConfig);
@@ -232,12 +249,19 @@ public class KingdomKeys {
 
 	public void addPieceToPattern(RegistryAccess registryAccess, ResourceLocation pattern, ResourceLocation structure, int weight) {
 		Registry<StructureTemplatePool> registry = registryAccess.registryOrThrow(Registries.TEMPLATE_POOL);
-		StructureTemplatePool pat = Objects.requireNonNull(registry.get(pattern));
+		StructureTemplatePool pat = registry.get(pattern);
+		if (pat == null) {
+			LOGGER.warn("Template pool {} is missing, skipping {}", pattern, structure);
+			return;
+		}
 		SinglePoolElement piece = StructurePoolElement.legacy(structure.toString()).apply(StructureTemplatePool.Projection.RIGID);
 		for (int i = 0; i < weight; i++) {
 			pat.templates.add(piece);
 		}
-		pat.rawTemplates = List.of(Pair.of(piece, weight));
+		// rawTemplates has to be appended to, never replaced: other worldgen mods (Lithostitched for example) rebuild their own element list from it, so overwriting it wipes every vanilla piece of the pool
+		List<Pair<StructurePoolElement, Integer>> rawTemplates = new ArrayList<>(pat.rawTemplates);
+		rawTemplates.add(Pair.of(piece, weight));
+		pat.rawTemplates = rawTemplates;
 	}
 
 
@@ -255,6 +279,7 @@ public class KingdomKeys {
 		event.addListener(new MeldingDataLoader());
 		event.addListener(new DriveFormDataLoader());
 		event.addListener(new MagicDataLoader());
+		event.addListener(new AbilityDataLoader());
 		event.addListener(new LevelingDataLoader());
 		event.addListener(new NamesListLoader.Loader());
 		event.addListener(new ShopListDataLoader());

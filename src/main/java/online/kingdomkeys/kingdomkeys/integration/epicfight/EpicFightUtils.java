@@ -61,4 +61,7 @@ public class EpicFightUtils {
     public static boolean isPlayerSummoning(LivingEntityPatch<?> playerPatch) {
         return Minecraft.getInstance().player.getId() == playerPatch.getOriginal().getId();
     }
+
+
+
 }

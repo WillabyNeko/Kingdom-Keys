@@ -53,7 +53,7 @@ public class ModConfigs {
     }
 
     public static List<? extends Integer> hiddenMagic;
-    public static boolean cmHeaderTextVisible, cmClassicColors, snapChatToCommandMenu, hpShowHearts, showDriveForms, summonTogether, auto3rdPersonShip, cmChangeColor, customFont, shoulderSurfingDecoupled, seasonalEvents, portrait3D;
+    public static boolean cmHeaderTextVisible, cmClassicColors, snapChatToCommandMenu, hpShowHearts, summonTogether, auto3rdPersonShip, cmChangeColor, customFont, shoulderSurfingDecoupled, seasonalEvents, portrait3D;
     public static int cmTextXOffset, cmSelectedXOffset, cmSubXOffset, hpAlarm, lockOnIconScale, lockOnIconRotation, lockOnHpPerBar, partyYDistance, cmEndLWidth, cmEndRWidth, cmHeaderEndLWidth, cmHeaderEndRWidth, cmReactionEndLWidth, cmReactionEndRWidth;
 
     public static void setHUDData(String name, List<? extends Float> data){
@@ -126,6 +126,10 @@ public class ModConfigs {
                 CLIENT.gummiControlsHUDData.set(data);
                 CLIENT.gummiControlsHUDData.save();
             }
+            case "SynthesisTracker" -> {
+                CLIENT.synthesisTrackerHUDData.set(data);
+                CLIENT.synthesisTrackerHUDData.save();
+            }
         }
     }
 
@@ -149,6 +153,7 @@ public class ModConfigs {
             case "GummiInfo" -> CLIENT.gummiInfoHUDData.get();
             case "GummiReadout" -> CLIENT.gummiReadoutHUDData.get();
             case "GummiControls" -> CLIENT.gummiControlsHUDData.get();
+            case "SynthesisTracker" -> CLIENT.synthesisTrackerHUDData.get();
             default -> throw new IllegalStateException("Unexpected HUD value: " + name);
         };
     }
@@ -253,12 +258,6 @@ public class ModConfigs {
         bakeClient();
     }
 
-    public static void setShowDriveForms(boolean val) {
-        CLIENT.showDriveForms.set(val);
-        CLIENT.showDriveForms.save();
-        bakeClient();
-    }
-
     public static void setCmEndLWidth(int value) {
         CLIENT.cmEndLWidth.set(value);
         CLIENT.cmEndLWidth.save();
@@ -324,8 +323,6 @@ public class ModConfigs {
         lockOnHpPerBar = CLIENT.lockOnHpPerBar.get();
 
         partyYDistance = CLIENT.partyYDistance.get();
-
-        showDriveForms = CLIENT.showDriveForms.get();
         summonTogether = CLIENT.summonTogether.get();
 
         showGuiToggle = CLIENT.showGuiToggle.get();
@@ -359,6 +356,7 @@ public class ModConfigs {
     public static List<String> playerSpawnHeartlessData;
 
     public static List<ResourceLocation> startingRecipes;
+    public static List<ResourceLocation> starterKeyblades;
 
     public static void bakeCommon() {
         heartlessSpawningMode = COMMON.heartlessSpawningMode.get();
@@ -396,6 +394,7 @@ public class ModConfigs {
     	needKeybladeForHeartless = COMMON.needKeybladeForHeartless.get();
 
         startingRecipes = ((List<String>) COMMON.startingRecipes.get()).stream().map(ResourceLocation::parse).toList();
+        starterKeyblades = ((List<String>) COMMON.starterKeyblades.get()).stream().map(ResourceLocation::parse).toList();
 
         allowBlocksInHangarArea = COMMON.allowBlocksInHangarArea.get();
         gummiBlocksDropPercent = COMMON.gummiBlocksDropPercent.get();

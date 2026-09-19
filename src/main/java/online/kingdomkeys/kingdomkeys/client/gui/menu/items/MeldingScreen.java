@@ -206,7 +206,7 @@ public class MeldingScreen extends MenuFilterable {
 			entries.add(new SlotEntry(slot, stack.copy(), false, false));
 		}
 
-		if (Utils.hasOnlyOneBag(player, BagItem.Type.MAGICS_BAG)) {
+		if (Utils.hasOnlyOneBag(player, BagItem.Type.SPELLS_BAG)) {
 			ItemStack magicBag = ItemStack.EMPTY;
 
 			for (ItemStack stack : minecraft.player.getInventory().items) {
@@ -282,16 +282,9 @@ public class MeldingScreen extends MenuFilterable {
 
 					ItemStack base = !getSelected1().isEmpty() ? getSelected1() : getSelected2();
 					boolean compatible = base.isEmpty() || alreadySelected || isCompatible(base, stack);
-					if (stack.getItem() instanceof MagicSpellItem spell) {
-						int color = spell.isMaxed(stack) ? 0x00FF00 : 0x555555;
 
-						String text = Utils.translateToLocal("gui.magicspell.lvl_short", spell.getLocalLevel(stack));
-						int x = getX() + getWidth() - minecraft.font.width(text) - 4;
-						gui.drawString(minecraft.font, text, x, getY() + 2, color);
-
-						if (!spell.canMeld(stack)) {
-							textColor = ChatFormatting.DARK_GRAY;
-						}
+					if (stack.getItem() instanceof MagicSpellItem spell && !spell.canMeld(stack)) {
+						textColor = ChatFormatting.DARK_GRAY;
 					}
 					if (!compatible) {
 						textColor = ChatFormatting.DARK_GRAY;
@@ -301,6 +294,15 @@ public class MeldingScreen extends MenuFilterable {
 						textColor = ChatFormatting.DARK_GRAY;
 					}
 					super.renderWidget(gui, mouseX, mouseY, partialTicks);
+
+					// fix cuz it wasn't rendering the level on equipped spells
+					if (stack.getItem() instanceof MagicSpellItem spell) {
+						int color = spell.isMaxed(stack) ? 0x00FF00 : 0x555555;
+
+						String text = Utils.translateToLocal("gui.magicspell.lvl_short", spell.getLocalLevel(stack));
+						int x = getX() + getWidth() - minecraft.font.width(text) - 4;
+						gui.drawString(minecraft.font, text, x, getY() + 2, color);
+					}
 				}
 			};
 

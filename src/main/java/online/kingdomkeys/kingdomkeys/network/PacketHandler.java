@@ -31,6 +31,9 @@ public class PacketHandler {
 		client(SCDeleteSavePointScreenshot.TYPE, SCDeleteSavePointScreenshot.STREAM_CODEC);
 		client(SCOpenAlignmentScreen.TYPE, SCOpenAlignmentScreen.STREAM_CODEC);
 		client(SCOpenChoiceScreen.TYPE, SCOpenChoiceScreen.STREAM_CODEC);
+		client(SCOpenUnionScreen.TYPE, SCOpenUnionScreen.STREAM_CODEC);
+		client(SCOpenForetellerScreen.TYPE, SCOpenForetellerScreen.STREAM_CODEC);
+		client(SCOpenDialogue.TYPE, SCOpenDialogue.STREAM_CODEC);
 		client(SCOpenCODoorGui.TYPE, SCOpenCODoorGui.STREAM_CODEC);
 		client(SCOpenStruggleMenu.TYPE, SCOpenStruggleMenu.STREAM_CODEC);
 		client(SCCloseScreen.TYPE, SCCloseScreen.STREAM_CODEC);
@@ -43,6 +46,7 @@ public class PacketHandler {
 		client(SCRecalculateEyeHeight.TYPE, SCRecalculateEyeHeight.STREAM_CODEC);
 		client(SCShowMessagesPacket.TYPE, SCShowMessagesPacket.STREAM_CODEC);
 		client(SCShowOrgPortalGUI.TYPE, SCShowOrgPortalGUI.STREAM_CODEC);
+		client(SCShowInformation.TYPE, SCShowInformation.STREAM_CODEC);
 		client(SCShowOverlayPacket.TYPE, SCShowOverlayPacket.STREAM_CODEC);
 		client(SCSyncCastleOblivionInteriorData.TYPE, SCSyncCastleOblivionInteriorData.STREAM_CODEC);
 		client(SCSyncDimensionLists.TYPE, SCSyncDimensionLists.STREAM_CODEC);
@@ -53,9 +57,10 @@ public class PacketHandler {
 		client(SCSyncLimitData.TYPE, SCSyncLimitData.STREAM_CODEC);
 		client(SCSyncShotlockData.TYPE, SCSyncShotlockData.STREAM_CODEC);
 		client(SCSyncMagicData.TYPE, SCSyncMagicData.STREAM_CODEC);
+		client(SCSyncAbilityData.TYPE, SCSyncAbilityData.STREAM_CODEC);
+		client(SCShowWarning.TYPE, SCShowWarning.STREAM_CODEC);
 		client(SCSyncMoogleNames.TYPE, SCSyncMoogleNames.STREAM_CODEC);
 		client(SCSyncOrganizationData.TYPE, SCSyncOrganizationData.STREAM_CODEC);
-		client(SCSyncOrgPortalPacket.TYPE, SCSyncOrgPortalPacket.STREAM_CODEC);
 		client(SCSyncOrbStats.TYPE, SCSyncOrbStats.STREAM_CODEC);
 		client(SCStartReversal.TYPE, SCStartReversal.STREAM_CODEC);
 		client(SCSyncPlayerData.TYPE, SCSyncPlayerData.STREAM_CODEC);
@@ -95,9 +100,10 @@ public class PacketHandler {
 		server(CSGiveUpKO.TYPE, CSGiveUpKO.STREAM_CODEC);
 		server(CSToggleFlightModePacket.TYPE, CSToggleFlightModePacket.STREAM_CODEC);
 		server(CSLevelUpKeybladePacket.TYPE, CSLevelUpKeybladePacket.STREAM_CODEC);
-		server(CSOrgPortalTPPacket.TYPE, CSOrgPortalTPPacket.STREAM_CODEC);
 		server(CSPartyAddMember.TYPE, CSPartyAddMember.STREAM_CODEC);
 		server(CSPartyCreate.TYPE, CSPartyCreate.STREAM_CODEC);
+		server(CSStartEncounter.TYPE, CSStartEncounter.STREAM_CODEC);
+		server(CSDialogueAnswer.TYPE, CSDialogueAnswer.STREAM_CODEC);
 		server(CSStruggleCreate.TYPE, CSStruggleCreate.STREAM_CODEC);
 		server(CSStruggleJoin.TYPE, CSStruggleJoin.STREAM_CODEC);
 		server(CSStruggleLeave.TYPE, CSStruggleLeave.STREAM_CODEC);
@@ -109,6 +115,7 @@ public class PacketHandler {
 		server(CSPartyPromote.TYPE, CSPartyPromote.STREAM_CODEC);
 		server(CSPartySettings.TYPE, CSPartySettings.STREAM_CODEC);
 		server(CSPedestalConfig.TYPE, CSPedestalConfig.STREAM_CODEC);
+		server(CSApprenticeClothDesign.TYPE, CSApprenticeClothDesign.STREAM_CODEC);
 		if (KingdomKeys.efmLoaded) {
 			server(CSPlayAnimation.TYPE, CSPlayAnimation.STREAM_CODEC);
 		}
@@ -118,6 +125,7 @@ public class PacketHandler {
 		server(CSSetAirStepPacket.TYPE, CSSetAirStepPacket.STREAM_CODEC);
 		server(CSSetAlignment.TYPE, CSSetAlignment.STREAM_CODEC);
 		server(CSSetChoice.TYPE, CSSetChoice.STREAM_CODEC);
+		server(CSSetUnion.TYPE, CSSetUnion.STREAM_CODEC);
 		server(CSSetEquippedAbilityPacket.TYPE, CSSetEquippedAbilityPacket.STREAM_CODEC);
 		server(CSSetGlidingPacket.TYPE, CSSetGlidingPacket.STREAM_CODEC);
 		server(CSSetNotifColor.TYPE, CSSetNotifColor.STREAM_CODEC);
@@ -137,6 +145,7 @@ public class PacketHandler {
 		server(CSSyncAllClientDataPacket.TYPE, CSSyncAllClientDataPacket.STREAM_CODEC);
 		server(CSSyncArmorColor.TYPE, CSSyncArmorColor.STREAM_CODEC);
 		server(CSSynthesiseRecipe.TYPE, CSSynthesiseRecipe.STREAM_CODEC);
+		server(CSTrackRecipe.TYPE, CSTrackRecipe.STREAM_CODEC);
 		server(CSMeldRecipe.TYPE, CSMeldRecipe.STREAM_CODEC);
 		server(CSTakeMaterials.TYPE, CSTakeMaterials.STREAM_CODEC);
 		server(CSTravelToSoA.TYPE, CSTravelToSoA.STREAM_CODEC);

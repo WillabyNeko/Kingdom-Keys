@@ -9,6 +9,7 @@ import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundSource;
@@ -19,14 +20,15 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import online.kingdomkeys.kingdomkeys.KingdomKeys;
-import online.kingdomkeys.kingdomkeys.client.gui.ConfirmChoiceMenuPopup;
-import online.kingdomkeys.kingdomkeys.client.gui.IPlayerDataRequester;
-import online.kingdomkeys.kingdomkeys.client.gui.OrgPortalGui;
-import online.kingdomkeys.kingdomkeys.client.gui.SavePointScreen;
+import online.kingdomkeys.kingdomkeys.ability.Ability;
+import online.kingdomkeys.kingdomkeys.ability.AbilityData;
+import online.kingdomkeys.kingdomkeys.ability.ModAbilities;
+import online.kingdomkeys.kingdomkeys.client.gui.*;
 import online.kingdomkeys.kingdomkeys.client.gui.castle_oblivion.CardPackScreen;
 import online.kingdomkeys.kingdomkeys.client.gui.castle_oblivion.MapCardRouletteScreen;
 import online.kingdomkeys.kingdomkeys.client.gui.castle_oblivion.RoomSynthesisScreen;
 import online.kingdomkeys.kingdomkeys.client.gui.elements.MenuBackground;
+import online.kingdomkeys.kingdomkeys.client.gui.elements.PopupWarningScreen;
 import online.kingdomkeys.kingdomkeys.client.gui.menu.MenuScreen;
 import online.kingdomkeys.kingdomkeys.client.gui.menu.NoChoiceMenuPopup;
 import online.kingdomkeys.kingdomkeys.client.gui.menu.check.CheckStatusScreen;
@@ -35,9 +37,11 @@ import online.kingdomkeys.kingdomkeys.client.gui.menu.items.MeldingScreen;
 import online.kingdomkeys.kingdomkeys.client.gui.menu.items.equipment.MenuEquipmentScreen;
 import online.kingdomkeys.kingdomkeys.client.gui.menu.struggle.MenuStruggle;
 import online.kingdomkeys.kingdomkeys.client.gui.organization.AlignmentSelectionScreen;
+import online.kingdomkeys.kingdomkeys.client.gui.overlay.InformationGui;
 import online.kingdomkeys.kingdomkeys.client.gui.overlay.ItemGetGui;
 import online.kingdomkeys.kingdomkeys.client.gui.overlay.SoAMessages;
 import online.kingdomkeys.kingdomkeys.client.gui.synthesis.SellScreen;
+import online.kingdomkeys.kingdomkeys.client.gui.synthesis.ShopScreen;
 import online.kingdomkeys.kingdomkeys.client.gui.synthesis.SynthesisMaterialScreen;
 import online.kingdomkeys.kingdomkeys.client.gui.synthesis.SynthesisScreen;
 import online.kingdomkeys.kingdomkeys.client.shotlock.ShotlockMinigameClient;
@@ -51,12 +55,12 @@ import online.kingdomkeys.kingdomkeys.driveform.DriveFormData;
 import online.kingdomkeys.kingdomkeys.driveform.ModDriveForms;
 import online.kingdomkeys.kingdomkeys.entity.block.CardDoorTileEntity;
 import online.kingdomkeys.kingdomkeys.entity.block.SavepointTileEntity;
-import online.kingdomkeys.kingdomkeys.entity.organization.OrgPortalEntity;
 import online.kingdomkeys.kingdomkeys.item.KeybladeItem;
 import online.kingdomkeys.kingdomkeys.item.organization.IOrgWeapon;
 import online.kingdomkeys.kingdomkeys.item.organization.OrganizationData;
 import online.kingdomkeys.kingdomkeys.leveling.LevelingData;
 import online.kingdomkeys.kingdomkeys.leveling.ModLevels;
+import online.kingdomkeys.kingdomkeys.lib.Strings;
 import online.kingdomkeys.kingdomkeys.limit.Limit;
 import online.kingdomkeys.kingdomkeys.limit.LimitData;
 import online.kingdomkeys.kingdomkeys.limit.ModLimits;
@@ -67,11 +71,13 @@ import online.kingdomkeys.kingdomkeys.network.stc.*;
 import online.kingdomkeys.kingdomkeys.savepoint.ModSavePoints;
 import online.kingdomkeys.kingdomkeys.savepoint.SavePoint;
 import online.kingdomkeys.kingdomkeys.savepoint.SavePointData;
+import online.kingdomkeys.kingdomkeys.shotlock.ModShotlocks;
 import online.kingdomkeys.kingdomkeys.shotlock.ShotlockData;
 import online.kingdomkeys.kingdomkeys.sound.AeroSoundInstance;
 import online.kingdomkeys.kingdomkeys.synthesis.keybladeforge.KeybladeData;
 import online.kingdomkeys.kingdomkeys.synthesis.melding.MeldingRegistry;
 import online.kingdomkeys.kingdomkeys.synthesis.recipe.RecipeRegistry;
+import online.kingdomkeys.kingdomkeys.synthesis.shop.ForetellerShop;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.ShopListRegistry;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.names.NamesListRegistry;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.sell.SellListRegistry;
@@ -80,6 +86,7 @@ import online.kingdomkeys.kingdomkeys.world.worldmap.GummiWorld;
 import online.kingdomkeys.kingdomkeys.world.worldmap.GummiWorldLoader;
 import org.apache.commons.io.IOUtils;
 
+import java.awt.*;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -112,10 +119,23 @@ public class ClientPacketHandler {
         SoAMessages.INSTANCE.clearMessage();
     }
 
-    public static void syncOrgPortal(SCSyncOrgPortalPacket msg) {
-        Player player = Minecraft.getInstance().player;
-        OrgPortalEntity portal = new OrgPortalEntity(player.level(), msg.pos(), msg.destPos(), msg.dimension(), msg.pos() != msg.destPos());
-        player.level().addFreshEntity(portal);
+    public static void openForeteller(SCOpenForetellerScreen message) {
+        PlayerData data = PlayerData.get(Minecraft.getInstance().player);
+        data.deserializeNBT(Minecraft.getInstance().level.registryAccess(), message.playerData());
+        Minecraft.getInstance().setScreen(new ShopScreen(data, ForetellerShop.shopFor(message.union()), null));
+    }
+
+    public static void openDialogue(SCOpenDialogue message) {
+        Minecraft.getInstance().setScreen(new DialogueScreen(message.speaker(), message.lines(), message.answers()));
+    }
+
+    public static void showInformation(SCShowInformation message) {
+        InformationGui.show(message.key());
+    }
+
+    public static void openUnion(SCOpenUnionScreen message) {
+        Minecraft.getInstance().setScreen(new ConfirmUnionMenuPopup(message.union()));
+        SoAMessages.INSTANCE.clearMessage();
     }
 
     public static void showOrgPortalGUI(SCShowOrgPortalGUI message) {
@@ -224,8 +244,16 @@ public class ClientPacketHandler {
     }
 
     public static void syncMagicData(SCSyncMagicData message) {
+        ModMagic.registry.forEach(magic -> magic.setMagicData(null));
+
         for (int i = 0; i < message.names().size(); i++) {
             Magic magic = ModMagic.registry.get(KingdomKeys.rl(message.names().get(i)));
+
+            // The server has a magic this client doesn't - a mod mismatch, not something to crash over
+            if (magic == null) {
+                continue;
+            }
+
             String d = message.data().get(i);
             BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(d.getBytes())));
 
@@ -238,6 +266,37 @@ public class ClientPacketHandler {
                 continue;
             }
             magic.setMagicData(result);
+            IOUtils.closeQuietly(br);
+        }
+    }
+
+    public static void showWarning(SCShowWarning message) {
+        Minecraft mc = Minecraft.getInstance();
+        mc.setScreen(new PopupWarningScreen(mc.screen, Component.translatable(Strings.WarningInformation), message.body(), new Color(112, 31, 35)));
+    }
+
+    public static void syncAbilityData(SCSyncAbilityData message) {
+        // Anything the server didn't send has to go back to its registered values, same as on the server
+        ModAbilities.registry.forEach(ability -> ability.setAbilityData(null));
+
+        for (int i = 0; i < message.names().size(); i++) {
+            Ability ability = ModAbilities.registry.get(KingdomKeys.rl(message.names().get(i)));
+
+            if (ability == null) {
+                continue;
+            }
+
+            String d = message.data().get(i);
+            BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(d.getBytes())));
+
+            AbilityData result;
+            try {
+                result = SCSyncAbilityData.GSON_BUILDER.fromJson(br, AbilityData.class);
+            } catch (JsonParseException e) {
+                KingdomKeys.LOGGER.error("Error parsing ability json file {}: {}", message.names().get(i), e);
+                continue;
+            }
+            ability.setAbilityData(result);
             IOUtils.closeQuietly(br);
         }
     }
@@ -280,8 +339,16 @@ public class ClientPacketHandler {
     }
 
     public static void syncShotlockData(online.kingdomkeys.kingdomkeys.network.stc.SCSyncShotlockData message) {
+        ModShotlocks.registry.forEach(shotlock -> shotlock.setShotlockData(null));
+
         for (int i = 0; i < message.names().size(); i++) {
             online.kingdomkeys.kingdomkeys.shotlock.Shotlock shotlock = online.kingdomkeys.kingdomkeys.shotlock.ModShotlocks.registry.get(KingdomKeys.rl(message.names().get(i)));
+
+            // The server has a shotlock this client doesn't - a mod mismatch, not something to crash over
+            if (shotlock == null) {
+                continue;
+            }
+
             String d = message.data().get(i);
             BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(d.getBytes())));
 
@@ -468,7 +535,6 @@ public class ClientPacketHandler {
     }
 
     public static void syncGlobalData(SCSyncGlobalData message) {
-        //TODO keep an eye if something doesn't sync cause of this
         if(Minecraft.getInstance().level.getEntity(message.entity()) == null)
             return;
         GlobalData globalData = GlobalData.get((LivingEntity) Minecraft.getInstance().level.getEntity(message.entity()));

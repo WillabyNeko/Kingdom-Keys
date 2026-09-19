@@ -24,6 +24,7 @@ import online.kingdomkeys.kingdomkeys.network.stc.SCShowMessagesPacket;
 import online.kingdomkeys.kingdomkeys.network.stc.SCShowRareMeld;
 import online.kingdomkeys.kingdomkeys.network.stc.SCSyncPlayerData;
 import online.kingdomkeys.kingdomkeys.network.stc.SCSyncWorldData;
+import online.kingdomkeys.kingdomkeys.story.StoryFlags;
 import online.kingdomkeys.kingdomkeys.synthesis.recipe.Recipe;
 import online.kingdomkeys.kingdomkeys.synthesis.recipe.RecipeRegistry;
 import online.kingdomkeys.kingdomkeys.util.Utils;
@@ -76,12 +77,13 @@ public record CSSynthesiseRecipe(ResourceLocation name) implements Packet {
 
 					Item i = recipe.getResult();
 					ItemStack stack = new ItemStack(i);
+					// Si el resultado tiene bolsa, va ahi antes que al inventario.
 					for (int s = 0; s < stacksToGive - 1; s++) {
-						player.getInventory().add(new ItemStack(i, stack.getMaxStackSize()));
+						Utils.addToBagOrInventory(player, new ItemStack(i, stack.getMaxStackSize()));
 					}
 					int remainder = recipe.getAmount() - ((stacksToGive - 1) * stack.getMaxStackSize());
 					if (remainder > 0) {
-						player.getInventory().add(new ItemStack(i, remainder));
+						Utils.addToBagOrInventory(player, new ItemStack(i, remainder));
 					}
 
 					ItemStack visual;
@@ -108,6 +110,14 @@ public record CSSynthesiseRecipe(ResourceLocation name) implements Packet {
 					}
 
 					playerData.addSynthesisedRecipe(name.toString());
+
+					if (name.equals(playerData.getTrackedRecipe())) {
+						playerData.setTrackedRecipe(null);
+					}
+
+					if (i instanceof KeychainItem && playerData.hasUnion() && !playerData.isOrgMember() && !playerData.hasFlag(StoryFlags.FORETELLER_VISITED)) {
+						playerData.addFlag(StoryFlags.FORETELLER_OWED);
+					}
 				}
 
 				PacketHandler.sendTo(new SCSyncPlayerData(player), (ServerPlayer) player);

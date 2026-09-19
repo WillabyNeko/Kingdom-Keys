@@ -41,7 +41,6 @@ public class ModBlocks {
             infestedNormalBlox = createNewBlock("infested_normal_blox", () -> new InfestedNormalBlox(Block.Properties.of().mapColor(MapColor.COLOR_RED).strength(1, 10))),
             magicTarget = createNewBlock("magic_target", () -> new MagicTargetBlock(Block.Properties.of().mapColor(MapColor.COLOR_RED).strength(1, 10))),
 
-            //TODO HARVEST LEVEL REPLACED BY TAGS
             blazingOre = createNewBlock("blazing_ore", () -> new KKOreBlock(Block.Properties.of().mapColor(MapColor.STONE).instrument(NoteBlockInstrument.BASEDRUM).strength(2.0F, 1.0F).lightLevel((state) -> 4))), //HL 1
             blazingOreN = createNewBlock("blazing_ore_n", () -> new KKOreBlock(Block.Properties.of().mapColor(MapColor.STONE).instrument(NoteBlockInstrument.BASEDRUM).strength(2.0F, 1.0F).lightLevel((state) -> 4))), //HL 1
             blazingOreD = createNewBlock("blazing_ore_d", () -> new KKOreBlock(Block.Properties.of().mapColor(MapColor.STONE).instrument(NoteBlockInstrument.BASEDRUM).strength(2.0F, 1.0F).lightLevel((state) -> 4))), //HL 1
@@ -78,6 +77,7 @@ public class ModBlocks {
             magicalChest = createNewBlock("magical_chest", () -> new MagicalChestBlock(Block.Properties.of().mapColor(MapColor.GOLD).strength(2.0F, 1.0F))), //HL 2
     		soADoor = createNewBlock("soa_door", () -> new SoADoorBlock(Block.Properties.of().mapColor(MapColor.METAL).strength(-1.0F, 3600000.0F))), //HL 2
     		pedestal = createNewBlock("pedestal", () -> new PedestalBlock(Block.Properties.of().mapColor(MapColor.METAL).strength(2.0F, 1.0F))), //HL 2
+    		apprenticeClothStation = createNewBlock("apprentice_cloth_station", () -> new ApprenticeClothStationBlock(Block.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD).noOcclusion())),
     		mosaic_stained_glass = createNewBlock("mosaic_stained_glass", () -> new MosaicStainedGlassBlock(Block.Properties.of().instrument(NoteBlockInstrument.HAT).lightLevel(state -> state.getValue(MosaicStainedGlassBlock.STRUCTURE) ? 15 : 0).noOcclusion().sound(SoundType.GLASS).strength(1.0F, 10.0F))),
             treasureChest = createNewBlock("treasure_chest", () -> new TreasureChestBlock(Block.Properties.of().mapColor(MapColor.GOLD).strength(2.0F, 1.0F))),
 
@@ -217,6 +217,7 @@ public class ModBlocks {
         createNewGummiBubbleHelmBlock("gummi_mini_helm", gummiMiniHelms, GummiBlockProperties.of(2, 20, 0).withShape(GummiBlockProperties.Shape.SLAB), seat0);
 
         createNewGummiAeroBlock("gummi_aero_square", gummiAeroSquares, GummiBlockProperties.of(1, 1, 0).withPlacement(GummiPlacementType.EDGE).withShape(GummiBlockProperties.Shape.AERO_PLATE), 10);
+        createNewGummiAeroBlock("gummi_aero_triangle", gummiAeroTriangles, GummiBlockProperties.of(1, 1, 0).withPlacement(GummiPlacementType.EDGE).withShape(GummiBlockProperties.Shape.AERO_WEDGE), 5);
 
         for (DyeColor dye : DyeColor.values()) {
             String name = "flowmotion_rail_" + dye.getName();
@@ -224,8 +225,6 @@ public class ModBlocks {
             createNewBlockItem(name, rail);
             flowmotionRails.add(rail);
         }
-
-        createNewGummiAeroBlock("gummi_aero_triangle", gummiAeroTriangles, GummiBlockProperties.of(1, 1, 0).withPlacement(GummiPlacementType.EDGE).withShape(GummiBlockProperties.Shape.AERO_WEDGE), 10);
     }
 
     /**

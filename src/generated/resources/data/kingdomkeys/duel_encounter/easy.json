@@ -1,0 +1,24 @@
+{
+  "arena_radius": 0,
+  "encounter": {
+    "type": "kingdomkeys:wave",
+    "interval_ticks": 60,
+    "waves": [
+      {
+        "spawns": [
+          "kingdomkeys:master_duel"
+        ]
+      }
+    ]
+  },
+  "experience": 200,
+  "grants": "kingdomkeys:duel/easy",
+  "info": "kingdomkeys.information.duel",
+  "level": 20,
+  "lux": 100,
+  "requires": [
+    "kingdomkeys:story/training_done"
+  ],
+  "rewards": [],
+  "spawn_points": 1
+}

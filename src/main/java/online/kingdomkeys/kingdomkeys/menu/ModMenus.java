@@ -4,6 +4,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -29,6 +30,7 @@ public class ModMenus {
     public static final Supplier<MenuType<MagicalChestMenu>> MAGICAL_CHEST = createMenu("magical_chest", MagicalChestMenu::new);
     public static final Supplier<MenuType<GummiHangarMenu>> GUMMI_HANGAR = createMenu("gummi_hangar_container", GummiHangarMenu::new);
     public static final Supplier<MenuType<PauldronMenu>> PAULDRON = createMenu("pauldron", PauldronMenu::fromNetwork);
+    public static final Supplier<MenuType<ApprenticeClothStationMenu>> APPRENTICE_CLOTH_STATION = createMenu("apprentice_cloth_station", ApprenticeClothStationMenu::new);
 
     public static <M extends AbstractContainerMenu> Supplier<MenuType<M>> createMenu(String name, IContainerFactory<M> container) {
         return MENUS.register(name, () -> new MenuType<>(container, FeatureFlags.DEFAULT_FLAGS));
@@ -41,18 +43,22 @@ public class ModMenus {
         event.register(ModMenus.MAGICAL_CHEST.get(), MagicalChestScreen::new);
         event.register(ModMenus.GUMMI_HANGAR.get(), GummiHangarScreen::new);
         event.register(ModMenus.PAULDRON.get(), PauldronScreen::new);
+        event.register(ModMenus.APPRENTICE_CLOTH_STATION.get(), ApprenticeClothStationScreen::new);
     }
 
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        Item[] bags = ModItems.ITEMS.getEntries().stream().<Item>map(Supplier::get).filter(item -> item instanceof BagItem).toArray(Item[]::new);
         event.registerItem(Capabilities.ItemHandler.ITEM, (object, context) -> {
                 if (!(object.getItem() instanceof BagItem bagItem)) {
                     return null;
                 }
             return new BagInventory(object, bagItem.getValidator());
-            }, ModItems.synthesisBag.get(), ModItems.magicsBag.get(), ModItems.cardsBag.get(), ModItems.shotlocksBag.get());
+            }, bags);
+
         event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModEntities.TYPE_PEDESTAL.get(), (object, context) -> object.inventory.get());
         event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModEntities.TYPE_MAGICAL_CHEST.get(), (object, context) -> object.inventory.get());
         event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModEntities.TYPE_GUMMI_HANGAR.get(), (object, context) -> object.inventory.get());
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModEntities.TYPE_APPRENTICE_CLOTH_STATION.get(), (object, context) -> object.inventory.get());
         event.registerItem(Capabilities.ItemHandler.ITEM, (object, context) -> new PauldronInventory(object), ModItems.terra_Shoulder.get(), ModItems.aqua_Shoulder.get(), ModItems.ventus_Shoulder.get(), ModItems.eraqus_Shoulder.get(), ModItems.xehanort_Shoulder.get(), ModItems.nightmareVentus_Shoulder.get(), ModItems.ux_Shoulder.get());
     }
 

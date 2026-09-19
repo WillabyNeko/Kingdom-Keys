@@ -99,6 +99,17 @@ public class Recipes extends RecipeProvider {
 				.save(consumer);
 
 
+		ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.apprenticeClothStation.get())
+				.define('S', Items.STRING)
+				.define('H', Items.SHEARS)
+				.define('W', ItemTags.PLANKS)
+				.pattern("SSS")
+				.pattern("WHW")
+				.pattern("WWW")
+				.group(KingdomKeys.MODID)
+				.unlockedBy("apprentice_cloth_station", InventoryChangeTrigger.TriggerInstance.hasItems(Items.SHEARS))
+				.save(consumer);
+
 		ShapedRecipeBuilder.shaped(RecipeCategory.COMBAT, ModBlocks.magicTarget.get())
 				.define('L', Items.LAPIS_LAZULI)
 				.define('T', Blocks.TARGET)
@@ -800,6 +811,28 @@ public class Recipes extends RecipeProvider {
 				.define('S', Tags.Items.STRINGS)
 				.define('L', Tags.Items.LEATHERS)
 				.define('R', Items.RED_DYE)
+				.group(KingdomKeys.MODID)
+				.unlockedBy("leather", InventoryChangeTrigger.TriggerInstance.hasItems(Items.LEATHER))
+				.save(consumer);
+
+		ShapedRecipeBuilder.shaped(RecipeCategory.TOOLS, ModItems.keychainsBag.get())
+				.pattern("LSL")
+				.pattern("LDL")
+				.pattern("LLL")
+				.define('S', Tags.Items.STRINGS)
+				.define('L', Tags.Items.LEATHERS)
+				.define('D', Items.YELLOW_DYE)
+				.group(KingdomKeys.MODID)
+				.unlockedBy("leather", InventoryChangeTrigger.TriggerInstance.hasItems(Items.LEATHER))
+				.save(consumer);
+
+		ShapedRecipeBuilder.shaped(RecipeCategory.TOOLS, ModItems.consumablesBag.get())
+				.pattern("LSL")
+				.pattern("LDL")
+				.pattern("LLL")
+				.define('S', Tags.Items.STRINGS)
+				.define('L', Tags.Items.LEATHERS)
+				.define('D', Items.GREEN_DYE)
 				.group(KingdomKeys.MODID)
 				.unlockedBy("leather", InventoryChangeTrigger.TriggerInstance.hasItems(Items.LEATHER))
 				.save(consumer);

@@ -1,0 +1,398 @@
+{
+  "nodes": {
+    "darkness": {
+      "answers": [
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:set_flag",
+              "flag": "kingdomkeys:foreteller/warned_of_darkness"
+            },
+            {
+              "type": "kingdomkeys:start_encounter",
+              "encounter": "kingdomkeys:medium"
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.ready"
+        },
+        {
+          "goto": "lessons",
+          "text": "kingdomkeys.dialogue.foreteller.answer.notyet"
+        }
+      ],
+      "lines": [
+        "kingdomkeys.dialogue.foreteller.darkness.1",
+        "kingdomkeys.dialogue.foreteller.darkness.2"
+      ]
+    },
+    "duels": {
+      "answers": [
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:start_encounter",
+              "duel": true,
+              "encounter": "kingdomkeys:easy"
+            }
+          ],
+          "if": [
+            {
+              "type": "kingdomkeys:can_start",
+              "duel": true,
+              "encounter": "kingdomkeys:easy"
+            }
+          ],
+          "text": "kingdomkeys.encounter.easy"
+        },
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:start_encounter",
+              "duel": true,
+              "encounter": "kingdomkeys:medium"
+            }
+          ],
+          "if": [
+            {
+              "type": "kingdomkeys:can_start",
+              "duel": true,
+              "encounter": "kingdomkeys:medium"
+            }
+          ],
+          "text": "kingdomkeys.encounter.medium"
+        },
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:start_encounter",
+              "duel": true,
+              "encounter": "kingdomkeys:hard"
+            }
+          ],
+          "if": [
+            {
+              "type": "kingdomkeys:can_start",
+              "duel": true,
+              "encounter": "kingdomkeys:hard"
+            }
+          ],
+          "text": "kingdomkeys.encounter.hard"
+        },
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:start_encounter",
+              "duel": true,
+              "encounter": "kingdomkeys:dynamic"
+            }
+          ],
+          "if": [
+            {
+              "type": "kingdomkeys:can_start",
+              "duel": true,
+              "encounter": "kingdomkeys:dynamic"
+            }
+          ],
+          "text": "kingdomkeys.encounter.dynamic"
+        },
+        {
+          "goto": "start",
+          "text": "kingdomkeys.dialogue.foreteller.answer.back"
+        }
+      ],
+      "lines": [
+        "kingdomkeys.dialogue.foreteller.duels"
+      ]
+    },
+    "graduation": {
+      "answers": [
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:return_home",
+              "grants": "kingdomkeys:story/training_done"
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.send"
+        }
+      ],
+      "lines": [
+        "kingdomkeys.dialogue.foreteller.graduation.1",
+        "kingdomkeys.dialogue.foreteller.graduation.2",
+        "kingdomkeys.dialogue.foreteller.graduation.3",
+        "kingdomkeys.dialogue.foreteller.graduation.4"
+      ]
+    },
+    "home": {
+      "answers": [
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:return_home"
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.send"
+        },
+        {
+          "goto": "start",
+          "text": "kingdomkeys.dialogue.foreteller.answer.back"
+        }
+      ],
+      "lines": [
+        "kingdomkeys.dialogue.foreteller.home"
+      ]
+    },
+    "lessons": {
+      "answers": [
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:start_encounter",
+              "encounter": "kingdomkeys:easy"
+            }
+          ],
+          "if": [
+            {
+              "type": "kingdomkeys:can_start",
+              "encounter": "kingdomkeys:easy"
+            }
+          ],
+          "text": "kingdomkeys.encounter.easy"
+        },
+        {
+          "goto": "darkness",
+          "if": [
+            {
+              "type": "kingdomkeys:can_start",
+              "encounter": "kingdomkeys:medium"
+            },
+            {
+              "type": "kingdomkeys:flag",
+              "flag": "kingdomkeys:foreteller/warned_of_darkness",
+              "present": false
+            }
+          ],
+          "text": "kingdomkeys.encounter.medium"
+        },
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:start_encounter",
+              "encounter": "kingdomkeys:medium"
+            }
+          ],
+          "if": [
+            {
+              "type": "kingdomkeys:can_start",
+              "encounter": "kingdomkeys:medium"
+            },
+            {
+              "type": "kingdomkeys:flag",
+              "flag": "kingdomkeys:foreteller/warned_of_darkness"
+            }
+          ],
+          "text": "kingdomkeys.encounter.medium"
+        },
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:start_encounter",
+              "encounter": "kingdomkeys:hard"
+            }
+          ],
+          "if": [
+            {
+              "type": "kingdomkeys:can_start",
+              "encounter": "kingdomkeys:hard"
+            }
+          ],
+          "text": "kingdomkeys.encounter.hard"
+        },
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:start_encounter",
+              "encounter": "kingdomkeys:dynamic"
+            }
+          ],
+          "if": [
+            {
+              "type": "kingdomkeys:can_start",
+              "encounter": "kingdomkeys:dynamic"
+            }
+          ],
+          "text": "kingdomkeys.encounter.dynamic"
+        },
+        {
+          "goto": "start",
+          "text": "kingdomkeys.dialogue.foreteller.answer.back"
+        }
+      ],
+      "lines": [
+        "kingdomkeys.dialogue.foreteller.lessons"
+      ]
+    },
+    "start": {
+      "answers": [
+        {
+          "goto": "theory",
+          "if": [
+            {
+              "type": "kingdomkeys:union"
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.ask"
+        },
+        {
+          "goto": "lessons",
+          "if": [
+            {
+              "type": "kingdomkeys:union"
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.train"
+        },
+        {
+          "goto": "duels",
+          "if": [
+            {
+              "type": "kingdomkeys:union"
+            },
+            {
+              "type": "kingdomkeys:flag",
+              "flag": "kingdomkeys:story/training_done"
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.spar"
+        },
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:open_shop"
+            }
+          ],
+          "if": [
+            {
+              "type": "kingdomkeys:flag",
+              "flag": "kingdomkeys:story/training_done"
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.shop"
+        },
+        {
+          "goto": "graduation",
+          "if": [
+            {
+              "type": "kingdomkeys:union"
+            },
+            {
+              "type": "kingdomkeys:flag",
+              "flag": "kingdomkeys:training/medium"
+            },
+            {
+              "type": "kingdomkeys:flag",
+              "flag": "kingdomkeys:story/training_done",
+              "present": false
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.graduate"
+        },
+        {
+          "goto": "home",
+          "if": [
+            {
+              "type": "kingdomkeys:union"
+            },
+            {
+              "type": "kingdomkeys:flag",
+              "flag": "kingdomkeys:story/foreteller_visited"
+            },
+            {
+              "type": "kingdomkeys:flag",
+              "flag": "kingdomkeys:training/medium",
+              "present": false
+            },
+            {
+              "type": "kingdomkeys:flag",
+              "flag": "kingdomkeys:story/training_done",
+              "present": false
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.home"
+        },
+        {
+          "do": [
+            {
+              "type": "kingdomkeys:close"
+            }
+          ],
+          "text": "kingdomkeys.dialogue.foreteller.answer.leave"
+        }
+      ],
+      "lines": [
+        "kingdomkeys.dialogue.foreteller.greeting"
+      ]
+    },
+    "theory": {
+      "answers": [
+        {
+          "goto": "theory_keyblade",
+          "text": "kingdomkeys.dialogue.foreteller.answer.theory.keyblade"
+        },
+        {
+          "goto": "theory_lux",
+          "text": "kingdomkeys.dialogue.foreteller.answer.theory.lux"
+        },
+        {
+          "goto": "start",
+          "text": "kingdomkeys.dialogue.foreteller.answer.back"
+        }
+      ],
+      "lines": [
+        "kingdomkeys.dialogue.foreteller.theory"
+      ]
+    },
+    "theory_keyblade": {
+      "answers": [
+        {
+          "goto": "theory_keyblade",
+          "text": "kingdomkeys.dialogue.foreteller.answer.theory.keyblade"
+        },
+        {
+          "goto": "theory_lux",
+          "text": "kingdomkeys.dialogue.foreteller.answer.theory.lux"
+        },
+        {
+          "goto": "start",
+          "text": "kingdomkeys.dialogue.foreteller.answer.back"
+        }
+      ],
+      "lines": [
+        "kingdomkeys.dialogue.foreteller.theory_keyblade.1",
+        "kingdomkeys.dialogue.foreteller.theory_keyblade.2",
+        "kingdomkeys.dialogue.foreteller.theory_keyblade.3"
+      ]
+    },
+    "theory_lux": {
+      "answers": [
+        {
+          "goto": "theory_keyblade",
+          "text": "kingdomkeys.dialogue.foreteller.answer.theory.keyblade"
+        },
+        {
+          "goto": "theory_lux",
+          "text": "kingdomkeys.dialogue.foreteller.answer.theory.lux"
+        },
+        {
+          "goto": "start",
+          "text": "kingdomkeys.dialogue.foreteller.answer.back"
+        }
+      ],
+      "lines": [
+        "kingdomkeys.dialogue.foreteller.theory_lux.1",
+        "kingdomkeys.dialogue.foreteller.theory_lux.2",
+        "kingdomkeys.dialogue.foreteller.theory_lux.3"
+      ]
+    }
+  }
+}

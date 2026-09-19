@@ -4,11 +4,15 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import online.kingdomkeys.kingdomkeys.KingdomKeys;
 import online.kingdomkeys.kingdomkeys.ability.Ability;
 import online.kingdomkeys.kingdomkeys.ability.ModAbilities;
 import online.kingdomkeys.kingdomkeys.config.ModConfigs;
 import online.kingdomkeys.kingdomkeys.data.PlayerData;
+import online.kingdomkeys.kingdomkeys.integration.epicfight.EpicFightEvents;
+import online.kingdomkeys.kingdomkeys.lib.DamageCalculation;
 import online.kingdomkeys.kingdomkeys.lib.KKRegistryObject;
+import online.kingdomkeys.kingdomkeys.lib.KKSupplier;
 import online.kingdomkeys.kingdomkeys.network.PacketHandler;
 import online.kingdomkeys.kingdomkeys.network.stc.SCSyncPlayerData;
 import online.kingdomkeys.kingdomkeys.reactioncommands.ModReactionCommands;
@@ -24,7 +28,7 @@ public abstract class Magic implements KKRegistryObject {
 	String translationKey;
 	ResourceLocation gmAbility;
 
-	private MagicData data;
+	private MagicData data = new MagicData();
 
 	public Magic(ResourceLocation registryName, boolean hasToSelect, ResourceLocation gmAbility) {
 		this.name = registryName;
@@ -57,12 +61,17 @@ public abstract class Magic implements KKRegistryObject {
 		return data.getDmgMultMax();
 	}
 
-	public float getRealDamageMult(Player player) {
-		if (getMaxLevel() <= 1) {
+	public float getRealDamageMult(LivingEntity caster) {
+		if (getMaxLevel() <= 1 || !(caster instanceof Player player)) {
 			return getDamageMult();
 		}
 
 		PlayerData playerData = PlayerData.get(player);
+
+		if (playerData == null) {
+			return getDamageMult();
+		}
+
 		int localLevel = Utils.getMagicHighestLocalLevel(playerData.getEquippedMagics(), getRegistryName());
 
 		float t = (float) (localLevel - 1) / (getMaxLevel() - 1);
@@ -127,8 +136,9 @@ public abstract class Magic implements KKRegistryObject {
 		return data;
 	}
 
+	// Passing null clears the magic back to blank data rather than leaving the getters with nothing to read
 	public void setMagicData(MagicData data) {
-		this.data = data;
+		this.data = data == null ? new MagicData() : data;
 	}
 
 	public int getTier() {
@@ -139,13 +149,70 @@ public abstract class Magic implements KKRegistryObject {
 		this.tier = tier;
 	}
 
-	public void magicUse(LivingEntity player, LivingEntity caster, float fullMPBlastMult, LivingEntity lockOnEntity) {
+	protected int abilityStacks(LivingEntity caster, KKSupplier<Ability> ability) {
+		if (!(caster instanceof Player player)) {
+			return 0;
+		}
 
+		PlayerData playerData = PlayerData.get(player);
+		return playerData == null ? 0 : playerData.getNumberOfAbilitiesEquipped(ability);
 	}
 
-	public int getMagicLocalLevel(Player player) {
-		PlayerData playerData = PlayerData.get(player);
-		return Utils.getMagicHighestLocalLevel(playerData.getEquippedMagics(), getRegistryName());
+	public static final float MOB_MAGIC_POOL = 100F;
+
+	/** Entities' magic stat, if it's a player it adds it's internal magic stat */
+	protected float casterMagicStat(LivingEntity caster) {
+		if (caster instanceof Player player) {
+			PlayerData playerData = PlayerData.get(player);
+			if (playerData != null) {
+				return playerData.getMagic(true);
+			}
+		}
+
+		return DamageCalculation.getMagicDamage(caster);
+	}
+
+	/** Entities' strength stat, if it's a player it adds it's internal strength stat */
+	protected float casterStrengthStat(LivingEntity caster) {
+		if (caster instanceof Player player) {
+			PlayerData playerData = PlayerData.get(player);
+			if (playerData != null) {
+				return playerData.getStrength(true);
+			}
+		}
+
+		return DamageCalculation.getStrengthDamage(caster);
+	}
+
+	protected float casterMagicPool(LivingEntity caster) {
+		if (caster instanceof Player player) {
+			PlayerData playerData = PlayerData.get(player);
+			if (playerData != null) {
+				return (float) playerData.getMaxMP();
+			}
+		}
+
+		return MOB_MAGIC_POOL;
+	}
+
+	public final void castFromMob(LivingEntity caster, LivingEntity lockOnEntity) {
+		castFromMob(caster, caster, lockOnEntity);
+	}
+
+	public final void castFromMob(LivingEntity target, LivingEntity caster, LivingEntity lockOnEntity) {
+		playMagicCastSound(target, caster);
+		magicUse(target, caster, 1F, getMagicLockOn() ? lockOnEntity : null);
+	}
+
+	public int getMagicLocalLevel(LivingEntity caster) {
+		if (caster instanceof Player player) {
+			PlayerData playerData = PlayerData.get(player);
+			if (playerData != null) {
+				return Utils.getMagicHighestLocalLevel(playerData.getEquippedMagics(), getRegistryName());
+			}
+		}
+
+		return 1;
 	}
 
 	/**
@@ -209,6 +276,10 @@ public abstract class Magic implements KKRegistryObject {
 		Utils.castMagic cast = new Utils.castMagic(player, caster, fullMPBlastMult, lockOnEntity, this);
 		casterData.setCastedMagic(cast);
 
+		if (KingdomKeys.efmLoaded) {
+			EpicFightEvents.playCastAnimation(caster, isProjectile());
+		}
+
 		PacketHandler.sendTo(new SCSyncPlayerData(caster), (ServerPlayer) caster);
 	}
 
@@ -225,9 +296,13 @@ public abstract class Magic implements KKRegistryObject {
 		return ModMagic.registry.get(next);
 	}
 
-	public abstract void magicUse(LivingEntity player, Player caster, float fullMPBlastMult, LivingEntity lockOnEntity);
+	public boolean isProjectile() {
+		return false;
+	}
 
-	public abstract void playMagicCastSound(LivingEntity player, Player caster);
+	public abstract void magicUse(LivingEntity player, LivingEntity caster, float fullMPBlastMult, LivingEntity lockOnEntity);
+
+	public abstract void playMagicCastSound(LivingEntity player, LivingEntity caster);
 
 	private boolean getRCProb(PlayerData casterData) {
 		int prob = casterData.getNumberOfAbilitiesEquipped(ModAbilities.GRAND_MAGIC_HASTE) * 10;
@@ -243,6 +318,10 @@ public abstract class Magic implements KKRegistryObject {
 	@Override
 	public ResourceLocation getRegistryName() {
 		return name;
+	}
+
+	public boolean is(String magicName) {
+		return getRegistryName().getPath().equals(magicName);
 	}
 
 }

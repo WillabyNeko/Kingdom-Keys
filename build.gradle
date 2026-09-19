@@ -129,6 +129,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 // the one fetched from GitHub at runtime. This puts a copy at the root of the jar as the offline fallback.
 processResources {
     from('ExtraResources/staff_crowns.json')
+    exclude '.cache/**'
 }
 
 configurations {
@@ -147,13 +148,15 @@ dependencies {
     //implementation "curse.maven:mekanism-268560:7132168"
     implementation "huge-structure-blocks-kk:huge-structure-blocks-kk:1.1.2"
     implementation "curse.maven:female-gender-neoforge-481655:5579007"
-    compileOnly "curse.maven:shoulder-surfing-reloaded-243190:8596423"
+    //compileOnly "curse.maven:shoulder-surfing-reloaded-243190:8596423"
+    implementation "curse.maven:shoulder-surfing-reloaded-243190:8596423"
     implementation "curse.maven:tool-belt-260262:5929065"
     implementation "curse.maven:spark-361579:6225208"
     implementation("dev.latvian.mods:kubejs-neoforge:$kubejs_version")
     implementation "curse.maven:just-enough-resources-jer-240630:6174588"
     implementation "curse.maven:worldedit-225608:5830452"
-}
+    implementation "curse.maven:lithostitched-936015:8660310"
+    implementation "curse.maven:immediatelyfast-686911:8749421"}
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
@@ -194,6 +197,34 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+tasks.register("updateJson") {
+    group = "publishing"
+    description = "Writes the current mod version into update.json"
+
+    var updateFile = layout.projectDirectory.file("update.json").asFile
+    var modVersion = mod_version
+    var mcVersion = minecraft_version
+    var homepage = "https://www.curseforge.com/minecraft/mc-mods/kingdom-keys-re-coded"
+    var preRelease = providers.gradleProperty("prerelease").present
+
+    outputs.upToDateWhen { false }
+
+    doLast {
+        var json = updateFile.exists() ? new groovy.json.JsonSlurper().parseText(updateFile.text) : [:]
+
+        json.homepage = json.homepage ?: homepage
+        json.promos = json.promos ?: [:]
+        json.promos["${mcVersion}-latest".toString()] = modVersion
+
+        if (!preRelease) {
+            json.promos["${mcVersion}-recommended".toString()] = modVersion
+        }
+
+        updateFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(json)) + "\n"
+        logger.lifecycle("update.json: {} -> {}{}", mcVersion, modVersion, preRelease ? " (latest)" : "")
+    }
 }
 
 java {

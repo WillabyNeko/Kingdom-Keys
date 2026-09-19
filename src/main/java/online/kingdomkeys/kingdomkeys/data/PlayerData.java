@@ -37,6 +37,7 @@ import online.kingdomkeys.kingdomkeys.integration.epicfight.enums.DualChoices;
 import online.kingdomkeys.kingdomkeys.integration.epicfight.enums.SingleChoices;
 import online.kingdomkeys.kingdomkeys.item.*;
 import online.kingdomkeys.kingdomkeys.item.organization.IOrgWeapon;
+import online.kingdomkeys.kingdomkeys.leveling.LevelingData;
 import online.kingdomkeys.kingdomkeys.leveling.ModLevels;
 import online.kingdomkeys.kingdomkeys.leveling.Stat;
 import online.kingdomkeys.kingdomkeys.lib.*;
@@ -52,6 +53,7 @@ import online.kingdomkeys.kingdomkeys.synthesis.recipe.RecipeRegistry;
 import online.kingdomkeys.kingdomkeys.util.Utils;
 import online.kingdomkeys.kingdomkeys.util.Utils.OrgMember;
 import online.kingdomkeys.kingdomkeys.util.Utils.castMagic;
+import online.kingdomkeys.kingdomkeys.world.worldmap.GummiWorld;
 
 import javax.annotation.Nullable;
 import java.time.Instant;
@@ -120,6 +122,8 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 		storage.putByte("soa_state", this.getSoAState().get());
 		storage.putByte("soa_choice", this.getChosen().get());
 		storage.putByte("soa_sacrifice", this.getSacrificed().get());
+		storage.putByte("soa_union", this.getUnion().get());
+		storage.putInt("lux", this.getLux());
 		CompoundTag returnCompound = new CompoundTag();
 		Vec3 pos = this.getReturnLocation();
 		returnCompound.putDouble("x", pos.x);
@@ -145,6 +149,10 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 			recipes.putString(recipe.toString(), recipe.toString());
 		}
 		storage.put("recipes", recipes);
+
+		if (this.getTrackedRecipe() != null) {
+			storage.putString("tracked_recipe", this.getTrackedRecipe().toString());
+		}
 
 		CompoundTag magics = new CompoundTag();
 		for (Entry<ResourceLocation, Integer> pair : this.getMagicsCastMap().entrySet()) {
@@ -221,6 +229,7 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 		storage.putInt("max_accessories", this.getMaxAccessories());
 		storage.putInt("max_armors", this.getMaxArmors());
 	    storage.putInt("max_magics", this.getMaxMagics());
+		storage.putInt("max_items", this.getMaxItems());
 
 		storage.putInt("hearts", this.getHearts());
 		storage.putInt("org_alignment", this.getAlignmentIndex());
@@ -279,6 +288,18 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 		}
 		storage.put("unlocked_crowns", unlockedCrownsList);
 
+		ListTag unlockedWorldsList = new ListTag();
+		for (String unlocked : this.unlockedWorlds) {
+			unlockedWorldsList.add(StringTag.valueOf(unlocked));
+		}
+		storage.put("unlocked_worlds", unlockedWorldsList);
+
+		ListTag flagsList = new ListTag();
+		for (String flag : this.flags) {
+			flagsList.add(StringTag.valueOf(flag));
+		}
+		storage.put("flags", flagsList);
+
 		storage.putFloat("crown_offset_x", this.crownOffsetX);
 		storage.putFloat("crown_offset_y", this.crownOffsetY);
 		storage.putFloat("crown_offset_z", this.crownOffsetZ);
@@ -313,6 +334,13 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 			synthedRecipes.putInt(rec, 0);
 		}
 		storage.put("synthesised_recipes",synthedRecipes);
+
+		ListTag grantedLevelItemsList = new ListTag();
+		for (String granted : this.grantedLevelItems) {
+			grantedLevelItemsList.add(StringTag.valueOf(granted));
+		}
+		storage.put("granted_level_items", grantedLevelItemsList);
+		storage.putBoolean("level_items_sought", this.levelItemsSought);
 
 		// Written out with everything else because a full sync lands on the client whenever anything at all
 		// changes, and anything left out of it would be wiped the moment the player took a scratch
@@ -397,6 +425,8 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 		this.setSoAState(SoAState.fromByte(nbt.getByte("soa_state")));
 		this.setChoice(SoAState.fromByte(nbt.getByte("soa_choice")));
 		this.setSacrifice(SoAState.fromByte(nbt.getByte("soa_sacrifice")));
+		this.setUnion(Union.fromByte(nbt.getByte("soa_union")));
+		this.setLux(nbt.getInt("lux"));
 		CompoundTag returnCompound = nbt.getCompound("soa_return_pos");
 		this.setReturnLocation(new Vec3(returnCompound.getDouble("x"), returnCompound.getDouble("y"), returnCompound.getDouble("z")));
 		this.setReturnDimension(ResourceKey.create(Registries.DIMENSION, KingdomKeys.rl(nbt.getString("soa_return_dim"))));
@@ -410,6 +440,8 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 			this.getKnownRecipeList().add(KingdomKeys.rl(key));
 		}
 		Collections.sort(recipeList);
+
+		this.setTrackedRecipe(nbt.contains("tracked_recipe") ? ResourceLocation.tryParse(nbt.getString("tracked_recipe")) : null);
 
 		magicCastMap.clear();
 		for (String magicName : nbt.getCompound("magic_casts").getAllKeys()) {
@@ -493,6 +525,7 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 		this.setMaxAccessories(nbt.getInt("max_accessories"));
 		this.setMaxArmors(nbt.getInt("max_armors"));
 		this.setMaxMagics(nbt.getInt("max_magics"));
+		this.setMaxItems(nbt.getInt("max_items"));
 		
 		this.setHearts(nbt.getInt("hearts"));
 		this.setAlignment(nbt.getInt("org_alignment"));
@@ -550,6 +583,18 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 			this.unlockedCrowns.add(this.getCrown());
 		}
 
+		this.unlockedWorlds.clear();
+		ListTag unlockedWorldsList = nbt.getList("unlocked_worlds", Tag.TAG_STRING);
+		for (int i = 0; i < unlockedWorldsList.size(); i++) {
+			this.unlockedWorlds.add(unlockedWorldsList.getString(i));
+		}
+
+		this.flags.clear();
+		ListTag flagsList = nbt.getList("flags", Tag.TAG_STRING);
+		for (int i = 0; i < flagsList.size(); i++) {
+			this.flags.add(flagsList.getString(i));
+		}
+
 		this.crownOffsetX = nbt.getFloat("crown_offset_x");
 		this.crownOffsetY = nbt.getFloat("crown_offset_y");
 		this.crownOffsetZ = nbt.getFloat("crown_offset_z");
@@ -585,6 +630,13 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 				this.getSynthesisedRecipes().add(key);
 			}
 		}
+
+		grantedLevelItems.clear();
+		ListTag grantedLevelItemsList = nbt.getList("granted_level_items", Tag.TAG_STRING);
+		for (int i = 0; i < grantedLevelItemsList.size(); i++) {
+			grantedLevelItems.add(grantedLevelItemsList.getString(i));
+		}
+		this.levelItemsSought = nbt.getBoolean("level_items_sought");
 
 		this.guardTicks = nbt.getInt("guard_ticks");
 		this.guardCooldown = nbt.getInt("guard_cooldown");
@@ -636,6 +688,7 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 	List<Utils.ShotlockPosition> shotlockEnemies = new ArrayList<>();
 	boolean hasShotMaxShotlock = false;
 	List<ResourceLocation> recipeList = new ArrayList<>();
+	private ResourceLocation trackedRecipe = null;
 	LinkedHashMap<ResourceLocation, int[]> abilityMap = new LinkedHashMap<>(); //Key = name, value = {level, equipped},
     private TreeMap<ResourceLocation, Integer> materials = new TreeMap<>();
 	private TreeMap<ResourceLocation, Integer> totalMaterials = new TreeMap<>();
@@ -661,6 +714,10 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 
 	SoAState soAState = SoAState.NONE, choice = SoAState.NONE, sacrifice = SoAState.NONE;
 
+	private Union union = Union.NONE;
+
+	private int lux = 0;
+
 	private BlockPos choicePedestal = new BlockPos(0, 0, 0), sacrificePedestal = new BlockPos(0, 0, 0);
 
 	private List<String> messages = new ArrayList<>();
@@ -685,6 +742,7 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 	private int maxAccessories = 0;
 	private int maxArmors = 0;
 	private int maxMagics = 0;
+	private int maxItems = 0;
 
 	private int armorColor = 16777215;
 	private boolean armorGlint = true;
@@ -701,6 +759,18 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 	private String crown = "";
 	/** Crowns this player has earned. What they wear ({@link #crown}) is a choice among these. */
 	private final Set<String> unlockedCrowns = new LinkedHashSet<>();
+
+	/** Dimension ids of the worlds found on the star map, kept in the order they were reached. */
+	private final Set<String> unlockedWorlds = new LinkedHashSet<>();
+
+	/**
+	 * Things this player has done, by name.
+	 *
+	 * <p>Anything that wants to remember "already happened" puts a name in here: a lesson beaten, a
+	 * speech heard, a quest handed in. Names rather than a bitfield so a datapack can invent its own
+	 * without anybody handing out numbers, and so nothing breaks when one is added or dropped.</p>
+	 */
+	private final Set<String> flags = new LinkedHashSet<>();
 	/** Where the crown sits on top of the head, in model units (16 = one block). Only X (left/right)
 	 * and Z (forward/back) - the height is always the top of the head, so there is no Y here.
 	 * The tilt lives in the crownRotationX/Y/Z fields below. */
@@ -715,6 +785,11 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 	Utils.castMagic castMagic = null;
 
 	private Set<String> synthesisedRecipes = new HashSet<>();
+
+	private final Set<String> grantedLevelItems = new LinkedHashSet<>();
+
+	//Controls whether a player had his levelup given items tracked for future exp fixes so it doesn't give them again
+	private boolean levelItemsSought = false;
 
 	private Queue<ItemStack> overflow = new ArrayDeque<>();
 
@@ -746,7 +821,7 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 
 	public void addExperience(Player player, int exp, boolean shareXP, boolean sound) {
 		if (player != null && getSoAState() == SoAState.COMPLETE) {
-			if (this.level < 100) {//TODO change 100 for the actual max level in the config file?
+			if (this.level < LevelingData.MAX_LEVEL) {
 				Party party = WorldData.get(player.getServer()).getPartyFromMember(player.getUUID());
 				if(party != null && shareXP) { //If player is in a party and first to get EXP
 					double sharedXP = (exp * ((ModConfigs.SERVER.partyXPShare.get() / 100F) * 2F)); // exp * share% * 2 (2 being to apply the formula from the 2 player party as mentioned in the config)
@@ -825,7 +900,7 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 	}
 
 	public int getExpNeeded(int level, int currentExp) {
-		if (level == 100)
+		if (level >= LevelingData.MAX_LEVEL)
 			return 0;
 		double nextLevel = (level + 300.0 * (Math.pow(2.0, (level / 7.0)))) * (level * 0.25);
 		this.remainingExp = ((int) nextLevel - currentExp);
@@ -1636,6 +1711,58 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 		}
 	}
 
+	public Set<String> getUnlockedWorlds() {
+		return this.unlockedWorlds;
+	}
+
+	/**
+	 * Whether this world is marked on the star map. A world the data marks as known from the
+	 * start counts for everyone, so a new pilot has somewhere to aim at rather than an empty sky.
+	 */
+	public boolean knowsWorld(GummiWorld world) {
+		return world != null && world.isKnownTo(this.unlockedWorlds);
+	}
+
+	/** @return true when this was the first time, so the caller knows whether to say anything. */
+	public boolean unlockWorld(ResourceKey<Level> dimension) {
+		return dimension != null && this.unlockedWorlds.add(dimension.location().toString());
+	}
+
+	public void setUnlockedWorlds(Collection<String> worlds) {
+		this.unlockedWorlds.clear();
+		if (worlds != null) {
+			this.unlockedWorlds.addAll(worlds);
+		}
+	}
+
+	/** Flags system for the dialogues */
+	public Set<String> getFlags() {
+		return this.flags;
+	}
+
+	public boolean hasFlag(ResourceLocation flag) {
+		return flag != null && this.flags.contains(flag.toString());
+	}
+
+	public boolean hasFlags(Collection<ResourceLocation> needed) {
+		return needed.stream().allMatch(this::hasFlag);
+	}
+
+	public boolean addFlag(ResourceLocation flag) {
+		return flag != null && this.flags.add(flag.toString());
+	}
+
+	public boolean removeFlag(ResourceLocation flag) {
+		return flag != null && this.flags.remove(flag.toString());
+	}
+
+	public void setFlags(Collection<String> flags) {
+		this.flags.clear();
+		if (flags != null) {
+			this.flags.addAll(flags);
+		}
+	}
+
 	public float getCrownOffsetX() {
 		return crownOffsetX;
 	}
@@ -1954,6 +2081,15 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 		return new int[] {0,0};
 	}
 
+	public int getGrowthAbilityLevel(ResourceLocation ability) {
+		if (!isAbilityEquipped(ability)) {
+			return 0;
+		}
+
+		int[] entry = getEquippedAbilityLevel(ability);
+		return entry == null ? 0 : Math.max(entry[0], 0);
+	}
+
 	public boolean isAbilityEquipped(KKSupplier<Ability> ability) {// First checks for weapon abilities
 		return isAbilityEquipped(ability.location());
 	}
@@ -2122,6 +2258,35 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 
 	public Set<String> getSynthesisedRecipes(){
 		return this.synthesisedRecipes;
+	}
+
+	// Key identifying one reward slot, so the same item at two different levels counts as two rewards
+	public static String levelItemKey(int level, ItemStack stack) {
+		return level + ":" + BuiltInRegistries.ITEM.getKey(stack.getItem());
+	}
+
+	public boolean hasGrantedLevelItem(String key) {
+		return this.grantedLevelItems.contains(key);
+	}
+
+	public void addGrantedLevelItem(String key) {
+		this.grantedLevelItems.add(key);
+	}
+
+	public boolean areLevelItemsSought() {
+		return this.levelItemsSought;
+	}
+
+	public void setLevelItemsSought(boolean sought) {
+		this.levelItemsSought = sought;
+	}
+
+	public ResourceLocation getTrackedRecipe() {
+		return trackedRecipe;
+	}
+
+	public void setTrackedRecipe(ResourceLocation recipe) {
+		this.trackedRecipe = recipe;
 	}
 
 	public List<ResourceLocation> getKnownRecipeList() {
@@ -2348,6 +2513,34 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 
 	public void setSoAState(SoAState state) {
 		this.soAState = state;
+	}
+
+	public Union getUnion() {
+		return this.union;
+	}
+
+	public void setUnion(Union union) {
+		this.union = union;
+	}
+
+	public boolean hasUnion() {
+		return this.union != Union.NONE;
+	}
+
+	public boolean isOrgMember() {
+		return getAlignment() != Utils.OrgMember.NONE;
+	}
+
+	public int getLux() {
+		return this.lux;
+	}
+
+	public void setLux(int amount) {
+		this.lux = Math.max(0, amount);
+	}
+
+	public void addLux(int amount) {
+		setLux(this.lux + amount);
 	}
 
 	public SoAState getChosen() {
@@ -2624,9 +2817,14 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 	public int getSynthExpNeeded(int level, int currentExp) {
 		if (level > 7)
 			return 0;
-		double nextLevel = (level + 300.0 * (Math.pow(2.0, (level / 8.0)))) * (level * 0.25);
-		remainingSynthExp = ((int) nextLevel - currentExp);
+		remainingSynthExp = getSynthExpForLevel(level) - currentExp;
 		return remainingSynthExp;
+	}
+
+	public static int getSynthExpForLevel(int level) {
+		if (level <= 0)
+			return 0;
+		return (int) ((level + 300.0 * (Math.pow(2.0, (level / 8.0)))) * (level * 0.25));
 	}
 
 	//endregion
@@ -2706,6 +2904,19 @@ public class PlayerData implements INBTSerializable<CompoundTag> {
 	public void addMaxMagics(int num) {
 		this.maxMagics += num;
 		messages.add("M_"+Strings.Stats_LevelUp_MaxMagics);
+	}
+
+	public int getMaxItems() {
+		return maxItems;
+	}
+
+	public void setMaxItems(int num) {
+		this.maxItems = num;
+	}
+
+	public void addMaxItems(int num) {
+		this.maxItems += num;
+		messages.add("P_"+Strings.Stats_LevelUp_MaxItems);
 	}
 	//endregion
 

@@ -16,12 +16,13 @@ public class PHumanoidRendererMixin {
     @Inject(method = "<init>", at = @At("TAIL"))
     public void init(EntityRendererProvider.Context context, EntityType entityType, CallbackInfo ci) {
         PatchedLivingEntityRenderer thisOne = ((PatchedLivingEntityRenderer)(Object)this);
-        thisOne.addPatchedLayer(DriveLayerRenderer.class, new PatchedDriveLayerRenderer<>());
+        thisOne.addPatchedLayer(DriveLayerRenderer.class, new PatchedDriveLayerRenderer<>(false));
         thisOne.addPatchedLayer(KeybladeArmorRenderer.class, new PatchedArmourLayerRenderer<>(false));
         thisOne.addPatchedLayer(ShoulderLayerRenderer.class, new PatchedShoulderLayerRenderer<>());
         thisOne.addPatchedLayer(AeroLayerRenderer.class, new PatchedAeroLayerRenderer<>());
         thisOne.addPatchedLayer(CrownLayerRenderer.class, new PatchedCrownLayerRenderer<>());
         thisOne.addPatchedLayer(FreezeLayerRenderer.class, new PatchedFreezeLayerRenderer<>());
         thisOne.addPatchedLayer(StopLayerRenderer.class, new PatchedStopLayerRenderer<>());
+        thisOne.addPatchedLayer(ClothArmorOverlayRenderer.class, new PatchedClothArmorOverlayRenderer<>(false));
     }
 }

@@ -9,7 +9,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.NeoForge;
 import online.kingdomkeys.kingdomkeys.ability.ModAbilities;
+import online.kingdomkeys.kingdomkeys.api.event.GuardEvent;
 import online.kingdomkeys.kingdomkeys.client.sound.ModSounds;
 import online.kingdomkeys.kingdomkeys.data.PlayerData;
 import online.kingdomkeys.kingdomkeys.integration.epicfight.EpicFightUtils;
@@ -70,11 +72,17 @@ public class CombatAbilities {
                 && !EpicFightUtils.isInEpicFightMode(player);
     }
 
-    public static void startGuard(Player player, PlayerData data) {
+    public static boolean startGuard(Player player, PlayerData data) {
+        if (NeoForge.EVENT_BUS.post(new GuardEvent.Start(player)).isCanceled()) {
+            return false;
+        }
+
         data.setGuardTicks(GUARD_TICKS);
         data.setGuardCooldown(GUARD_TICKS + GUARD_COOLDOWN);
         playSound(player, SoundEvents.ARMOR_EQUIP_NETHERITE.value(), 0.7F, 1.3F);
-        tellEveryone(player, data);
+        broadcastPlayerData(player, data);
+
+        return true;
     }
 
     private static void playSound(Player player, SoundEvent sound, float volume, float pitch) {
@@ -107,8 +115,16 @@ public class CombatAbilities {
         return aim >= GUARD_ARC;
     }
 
+    public static boolean guarded(LivingEntity target, DamageSource source) {
+        return target instanceof Player player && blocks(player, PlayerData.get(player), source);
+    }
 
-    public static void onBlocked(Player player, PlayerData data) {
+    public static boolean onBlocked(Player player, PlayerData data, DamageSource source, float amount) {
+        if (NeoForge.EVENT_BUS.post(new GuardEvent.Blocked(player, source, amount)).isCanceled()) {
+            // The window is left alone on purpose, so a later blow of the same combo can still be caught
+            return false;
+        }
+
         playSound(player, ModSounds.guard.get(), 1F, 1.4F);
         data.setGuardTicks(Math.max(data.getGuardTicks(), GUARD_EXTEND));
         data.setGuardCooldown(data.getGuardTicks() + GUARD_COOLDOWN);
@@ -116,14 +132,15 @@ public class CombatAbilities {
         if (data.isAbilityEquipped(ModAbilities.COUNTERGUARD))
             data.setCounterTicks(COUNTER_TICKS);
 
-        tellEveryone(player, data);
+        broadcastPlayerData(player, data);
+        return true;
     }
 
     /**
      * The windows live on the server. Their owner needs them to know when to watch the keys, and everyone
      * else needs them to draw the raised keyblade and the counter's turn.
      */
-    private static void tellEveryone(Player player, PlayerData data) {
+    private static void broadcastPlayerData(Player player, PlayerData data) {
         if (!player.level().isClientSide) {
             PacketHandler.sendToAll(new SCCombatWindowsPacket(player.getId(), data.getGuardTicks(), data.getCounterTicks(), data.getRecoveryTicks(), data.getCounterSpinTicks(), data.getCounterRingTicks(), data.getRecoveryFlashTicks()));
         }
@@ -142,7 +159,7 @@ public class CombatAbilities {
         data.setGuardTicks(0);
         data.setCounterSpinTicks(SPIN_TICKS);
         data.setCounterRingTicks(COUNTER_RING_TICKS);
-        tellEveryone(player, data);
+        broadcastPlayerData(player, data);
         playSound(player, SoundEvents.PLAYER_ATTACK_SWEEP, 1F, 0.7F);
         playSound(player, SoundEvents.PLAYER_ATTACK_CRIT, 1F, 0.8F);
 
@@ -199,7 +216,7 @@ public class CombatAbilities {
 
         if (data.isAbilityEquipped(ModAbilities.AERIAL_RECOVERY)) {
             data.setRecoveryTicks(RECOVERY_TICKS);
-            tellEveryone(player, data);
+            broadcastPlayerData(player, data);
         }
     }
 
@@ -211,7 +228,7 @@ public class CombatAbilities {
 
         data.setRecoveryTicks(0);
         data.setRecoveryFlashTicks(FLASH_TICKS);
-        tellEveryone(player, data);
+        broadcastPlayerData(player, data);
         player.fallDistance = 0;
         player.setDeltaMovement(0, Math.min(0, player.getDeltaMovement().y) * 0.1, 0);
         player.hurtMarked = true;

@@ -19,8 +19,11 @@ import online.kingdomkeys.kingdomkeys.network.Packet;
 import online.kingdomkeys.kingdomkeys.network.PacketHandler;
 import online.kingdomkeys.kingdomkeys.network.stc.SCSyncPlayerData;
 import online.kingdomkeys.kingdomkeys.network.stc.SCSyncWorldData;
+import online.kingdomkeys.kingdomkeys.synthesis.shop.Currency;
+import online.kingdomkeys.kingdomkeys.synthesis.shop.ForetellerShop;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.ShopItem;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.ShopListRegistry;
+import online.kingdomkeys.kingdomkeys.util.Utils;
 
 import java.util.List;
 
@@ -29,10 +32,8 @@ public record CSShopBuy(ResourceLocation inv, ItemStack itemStack) implements Pa
 	public static final Type<CSShopBuy> TYPE = new Type<>(KingdomKeys.rl("cs_shop_buy"));
 
 	public static final StreamCodec<RegistryFriendlyByteBuf, CSShopBuy> STREAM_CODEC = StreamCodec.composite(
-			ResourceLocation.STREAM_CODEC,
-			CSShopBuy::inv,
-			ItemStack.STREAM_CODEC,
-			CSShopBuy::itemStack,
+			ResourceLocation.STREAM_CODEC, CSShopBuy::inv,
+			ItemStack.STREAM_CODEC, CSShopBuy::itemStack,
 			CSShopBuy::new
 	);
 
@@ -66,9 +67,11 @@ public record CSShopBuy(ResourceLocation inv, ItemStack itemStack) implements Pa
 
 			boolean validItem = item.requireAll() ? (tierOk && matsOk) : (tierOk || matsOk);
 
-			boolean enoughMunny = playerData.getMunny() >= item.getCost();
-			if (validItem && enoughMunny) {
-				playerData.setMunny(playerData.getMunny() - item.getCost(), (ServerPlayer) player);
+			Currency currency = item.getCurrency();
+			int price = ForetellerShop.priceFor(item, playerData, inv);
+			boolean canAfford = currency.held(playerData) >= price;
+			if (validItem && canAfford) {
+				currency.charge(playerData, price, (ServerPlayer) player);
 
 				if(ModConfigs.SERVER.getExpFromShop.get())
 					playerData.addSynthExperience(10 + item.getTier()*2);
@@ -76,7 +79,7 @@ public record CSShopBuy(ResourceLocation inv, ItemStack itemStack) implements Pa
 				Item i = item.getResult();
 
 				int amount = item.getAmount();
-				player.getInventory().add(new ItemStack(i,amount));
+				Utils.addToBagOrInventory(player, new ItemStack(i, amount));
 
 				if(i instanceof KeychainItem && ModConfigs.heartlessSpawningMode == SpawningMode.AFTER_KEYCHAIN) {
 					WorldData worldData = WorldData.get(player.getServer());

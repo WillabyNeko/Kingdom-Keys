@@ -6,6 +6,7 @@ import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import online.kingdomkeys.kingdomkeys.KingdomKeys;
@@ -30,6 +31,7 @@ import online.kingdomkeys.kingdomkeys.network.PacketHandler;
 import online.kingdomkeys.kingdomkeys.network.cts.CSCloseMoogleGUI;
 import online.kingdomkeys.kingdomkeys.network.cts.CSOpenMenu;
 import online.kingdomkeys.kingdomkeys.network.cts.CSSynthesiseRecipe;
+import online.kingdomkeys.kingdomkeys.network.cts.CSTrackRecipe;
 import online.kingdomkeys.kingdomkeys.synthesis.recipe.Recipe;
 import online.kingdomkeys.kingdomkeys.synthesis.recipe.RecipeRegistry;
 import online.kingdomkeys.kingdomkeys.util.Utils;
@@ -43,9 +45,17 @@ import java.util.List;
 import java.util.Map.Entry;
 
 public class SynthesisCreateScreen extends MenuFilterable {
+
+	/** The moogle level the curve stops at, past which there is nothing left to fill */
+	private static final int MAX_SYNTH_LEVEL = 7;
+
+	private static final int BAR_HEIGHT = 2;
+
 	MenuBox boxL, boxM, boxRT, boxRB;
 	MenuButton create;
 	private MenuButton back;
+
+	private boolean trackMode;
 	SynthesisScreen parent;
 
 	public SynthesisCreateScreen(PlayerData playerData, SynthesisScreen parent) {
@@ -60,6 +70,10 @@ public class SynthesisCreateScreen extends MenuFilterable {
 		case "create":
 			PacketHandler.sendToServer(new CSSynthesiseRecipe(selectedRL));
 			minecraft.level.playSound(minecraft.player, minecraft.player.blockPosition(), ModSounds.itemget.get(), SoundSource.MASTER, 1.0f, 1.0f);
+			break;
+		case "track":
+			PacketHandler.sendToServer(new CSTrackRecipe(selectedRL));
+			minecraft.level.playSound(minecraft.player, minecraft.player.blockPosition(), ModSounds.menu_select.get(), SoundSource.MASTER, 1.0f, 1.0f);
 			break;
 		}
 	}
@@ -136,7 +150,7 @@ public class SynthesisCreateScreen extends MenuFilterable {
 		super.init();
 
 		create = new MenuButton(boxM.getX()+boxM.getWidth()/2 - (int)(buttonWidth+22)/2, (int) (height * 0.67),(int)buttonWidth, Strings.Gui_Synthesis_Synthesise_Create, MenuButton.ButtonType.ROUNDBUTTON,(e) -> {
-			action("create");
+			action(trackMode ? "track" : "create");
 		});
 		create.setCenterText(true);
 		addRenderableWidget(create);
@@ -168,7 +182,8 @@ public class SynthesisCreateScreen extends MenuFilterable {
 			boolean enoughSpace = false;
 			if (RecipeRegistry.getInstance().containsKey(selectedRL)) {
 				Recipe recipe = RecipeRegistry.getInstance().getValue(selectedRL);
-				enoughSpace = Utils.getFreeSlotsForPlayer(minecraft.player) >= Utils.stacksForItemAmount(new ItemStack(recipe.getResult()), recipe.getAmount());
+				ItemStack result = new ItemStack(recipe.getResult(), recipe.getAmount());
+				enoughSpace = Utils.insertIntoBags(minecraft.player, result, true).isEmpty() || Utils.getFreeSlotsForPlayer(minecraft.player) >= Utils.stacksForItemAmount(new ItemStack(recipe.getResult()), recipe.getAmount());
 				enoughMunny = playerData.getMunny() >= recipe.getCost();
 				enoughTier = !ModConfigs.SERVER.requireSynthTier.get() || playerData.getSynthLevel() >= recipe.getTier();
 				create.visible = true;
@@ -181,12 +196,19 @@ public class SynthesisCreateScreen extends MenuFilterable {
 
 			}
 
-			create.active = enoughMats && enoughMunny && enoughTier && enoughSpace;
-			if(!enoughSpace) { //TODO somehow make this detect in singleplayer the inventory changes
-				create.setMessage(Component.translatable(Strings.Gui_Shop_NoSpace));
+			trackMode = !enoughMats;
+
+			if (trackMode) {
+				boolean following = playerData.getTrackedRecipe() != null && playerData.getTrackedRecipe().equals(selectedRL);
+
+				// Always pressable, unlike Create: following a recipe costs nothing and asks for nothing
+				create.active = true;
+				create.setMessage(Component.translatable(following ? Strings.Gui_Synthesis_Synthesise_Untrack : Strings.Gui_Synthesis_Synthesise_Track));
 			} else {
-				create.setMessage(Component.translatable(Strings.Gui_Synthesis_Synthesise_Create));
+				create.active = enoughMunny && enoughTier && enoughSpace;
+				create.setMessage(Component.translatable(enoughSpace ? Strings.Gui_Synthesis_Synthesise_Create : Strings.Gui_Shop_NoSpace));
 			}
+
 			create.visible = RecipeRegistry.getInstance().containsKey(selectedRL);
 		} else {
 			create.visible = false;
@@ -205,10 +227,13 @@ public class SynthesisCreateScreen extends MenuFilterable {
 
 		//Render synth level
 		PlayerData playerData = PlayerData.get(minecraft.player);
-		gui.drawString(minecraft.font, Utils.translateToLocal(Strings.Gui_Synthesis_Exp_MoogleLevel)+": "+playerData.getSynthLevel(), boxRT.getX()+7, boxRT.getY()+6, 0xFFFF00);
 
-		String line = Utils.translateToLocal(Strings.Gui_Menu_Main_Synthesis_Tier)+": "+Utils.getTierFromInt(playerData.getSynthLevel());
+		String line = Utils.translateToLocal(Strings.Gui_Synthesis_Exp_MoogleLevel)+": ";
+		gui.drawString(minecraft.font, line, boxRT.getX()+7, boxRT.getY()+6, 0xFFFF00);
+
+		line = playerData.getSynthLevel()+" ["+Utils.getTierFromInt(playerData.getSynthLevel())+"]";
 		gui.drawString(minecraft.font, line, boxRT.getX()+boxRT.getWidth()-minecraft.font.width(line)-5, boxRT.getY()+6, 0xFFFFFF);
+
 
 		line = Utils.translateToLocal(Strings.Gui_Synthesis_Exp_NextLevel)+": ";
 		gui.drawString(minecraft.font, line, boxRT.getX()+7, boxRT.getY()+18, 0xFFFF00);
@@ -216,11 +241,49 @@ public class SynthesisCreateScreen extends MenuFilterable {
 		line = playerData.getSynthLevel() >= 7 ? "0 "+Utils.translateToLocal(Strings.Gui_Synthesis_Exp): playerData.getSynthExpNeeded(playerData.getSynthLevel(),playerData.getSynthExperience())+" "+Utils.translateToLocal(Strings.Gui_Synthesis_Exp);
 		gui.drawString(minecraft.font, line, boxRT.getX()+boxRT.getWidth()-minecraft.font.width(line)-5, boxRT.getY()+18, 0xFFFFFF);
 
+		renderSynthProgressBar(gui, playerData);
+
 		create.render(gui, mouseX,  mouseY,  partialTicks);
 		back.render(gui, mouseX, mouseY, partialTicks);
 
 		if (showRewardPopup) {
 			renderRewardPopup(gui, mouseX, mouseY);
+		}
+	}
+
+	private static float synthProgress(PlayerData playerData) {
+		int level = playerData.getSynthLevel();
+
+		if (level >= MAX_SYNTH_LEVEL) {
+			return 1.0F;
+		}
+
+		int start = PlayerData.getSynthExpForLevel(level - 1);
+		int end = PlayerData.getSynthExpForLevel(level);
+		int span = end - start;
+
+		if (span <= 0) {
+			return 0.0F;
+		}
+
+		return Mth.clamp((playerData.getSynthExperience() - start) / (float) span, 0.0F, 1.0F);
+	}
+
+	private void renderSynthProgressBar(GuiGraphics gui, PlayerData playerData) {
+		int left = boxRT.getX() + 8;
+		int right = boxRT.getX() + boxRT.getWidth() - 8;
+		int top = boxRT.getY() + 27;
+		int width = right - left;
+
+		if (width <= 0) {
+			return;
+		}
+
+		gui.fill(left, top, right, top + BAR_HEIGHT, 0xFF3F3F3F);
+
+		int filled = Math.round(width * synthProgress(playerData));
+		if (filled > 0) {
+			gui.fill(left, top, left + filled, top + BAR_HEIGHT, 0xFFFFDD00);
 		}
 	}
 

@@ -3,6 +3,7 @@ package online.kingdomkeys.kingdomkeys.client.gui.synthesis;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Renderable;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -22,14 +23,12 @@ import online.kingdomkeys.kingdomkeys.client.gui.elements.buttons.MenuStockItem;
 import online.kingdomkeys.kingdomkeys.client.sound.ModSounds;
 import online.kingdomkeys.kingdomkeys.config.ModConfigs;
 import online.kingdomkeys.kingdomkeys.data.PlayerData;
-import online.kingdomkeys.kingdomkeys.item.KKAccessoryItem;
-import online.kingdomkeys.kingdomkeys.item.KKArmorItem;
-import online.kingdomkeys.kingdomkeys.item.KeybladeItem;
-import online.kingdomkeys.kingdomkeys.item.KeychainItem;
+import online.kingdomkeys.kingdomkeys.item.*;
 import online.kingdomkeys.kingdomkeys.lib.Strings;
 import online.kingdomkeys.kingdomkeys.network.PacketHandler;
 import online.kingdomkeys.kingdomkeys.network.cts.CSCloseMoogleGUI;
 import online.kingdomkeys.kingdomkeys.network.cts.CSShopBuy;
+import online.kingdomkeys.kingdomkeys.synthesis.shop.ForetellerShop;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.ShopItem;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.ShopList;
 import online.kingdomkeys.kingdomkeys.synthesis.shop.ShopListRegistry;
@@ -46,27 +45,37 @@ public class ShopScreen extends MenuFilterable {
 	MenuButton create;
 	private MenuButton sell, back;
 	
+	// null if opened from outside a moogle, like a foreteller
 	SynthesisScreen parent;
+
+	public String invFile;
+	Screen returnTo;
 
 	public ShopScreen(PlayerData playerData, SynthesisScreen parent) {
 		super(Strings.Gui_Shop_Main_Title, new Color(255, 0, 0));
 		drawSeparately = true;
 		this.parent = parent;
+		this.invFile = parent.invFile;
 		this.playerData = playerData;
 	}
-	
-	public ShopScreen(PlayerData playerData, String nbt, SynthesisScreen parent) {
-		this(playerData, parent);
+
+	// Foreteller shop
+	public ShopScreen(PlayerData playerData, String invFile, Screen returnTo) {
+		super(Strings.Gui_Shop_Main_Title, new Color(255, 0, 0));
+		drawSeparately = true;
+		this.invFile = invFile;
+		this.returnTo = returnTo;
+		this.playerData = playerData;
 	}
 
 	public ShopList getShopList(){
-		return ShopListRegistry.getInstance().getRegistry().get(KingdomKeys.rl(parent.invFile));
+		return ShopListRegistry.getInstance().getRegistry().get(KingdomKeys.rl(invFile));
 	}
 
 	protected void action(String string) {
 		switch (string) {
 		case "create":
-			PacketHandler.sendToServer(new CSShopBuy(KingdomKeys.rl(parent.invFile), selectedItemStack));
+			PacketHandler.sendToServer(new CSShopBuy(KingdomKeys.rl(invFile), selectedItemStack));
 			minecraft.level.playSound(minecraft.player, minecraft.player.blockPosition(), ModSounds.buy.get(), SoundSource.MASTER, 1.0f, 1.0f);
 			break;
 		}
@@ -153,8 +162,20 @@ public class ShopScreen extends MenuFilterable {
 		create.setCenterText(true);
 		addRenderableWidget(create);
 
-        addRenderableWidget(sell = new MenuButton((int)this.buttonPosX, this.buttonPosY, (int)(buttonWidth+15)/2, Component.translatable(Strings.Gui_Shop_Sell).getString(), MenuButton.ButtonType.BUTTON, b -> minecraft.setScreen(new SellScreen(playerData, parent))));
-		addRenderableWidget(back = new MenuButton((int)this.buttonPosX, this.buttonPosY+18, (int)(buttonWidth+15)/2, Component.translatable(Strings.Gui_Menu_Back).getString(), MenuButton.ButtonType.BUTTON, b -> minecraft.setScreen(new SynthesisScreen(playerData, parent.invFile, parent.name, parent.moogle))));
+		// Selling only shows with a moogle
+		int backRow = this.buttonPosY;
+		if (parent != null) {
+			addRenderableWidget(sell = new MenuButton((int)this.buttonPosX, this.buttonPosY, (int)(buttonWidth+15)/2, Component.translatable(Strings.Gui_Shop_Sell).getString(), MenuButton.ButtonType.BUTTON, b -> minecraft.setScreen(new SellScreen(playerData, parent))));
+			backRow += 18;
+		}
+
+		addRenderableWidget(back = new MenuButton((int)this.buttonPosX, backRow, (int)(buttonWidth+15)/2, Component.translatable(Strings.Gui_Menu_Back).getString(), MenuButton.ButtonType.BUTTON, b -> {
+			if (parent != null) {
+				minecraft.setScreen(new SynthesisScreen(playerData, parent.invFile, parent.name, parent.moogle));
+			} else {
+				minecraft.setScreen(returnTo);
+			}
+		}));
 	}
 
 	@Override
@@ -173,7 +194,7 @@ public class ShopScreen extends MenuFilterable {
 		if (selectedItemStack != ItemStack.EMPTY) {
 			boolean enoughMunny = false;
 			boolean enoughTier = false;
-			List<ShopItem> list = ShopListRegistry.getInstance().getRegistry().get(KingdomKeys.rl(parent.invFile)).getList();
+			List<ShopItem> list = ShopListRegistry.getInstance().getRegistry().get(KingdomKeys.rl(invFile)).getList();
 			ShopItem item = null;
 			for(ShopItem shopItem : list) {
 				Item it = shopItem.getResult();
@@ -188,7 +209,7 @@ public class ShopScreen extends MenuFilterable {
 				}
 			}
 			if (item != null) {
-				enoughMunny = playerData.getMunny() >= item.getCost();
+				enoughMunny = item.getCurrency().held(playerData) >= ForetellerShop.priceFor(item, playerData, KingdomKeys.rl(invFile));
 				enoughTier = !ModConfigs.SERVER.requireSynthTierShop.get() || playerData.getSynthLevel() >= item.getTier();
 				boolean matsOk = item.getMatReq() <= playerData.getTotalMaterialAmount(item.getResult());
 
@@ -216,14 +237,16 @@ public class ShopScreen extends MenuFilterable {
 			}
 		}
 		create.render(gui, mouseX,  mouseY,  partialTicks);
-        sell.render(gui, mouseX, mouseY, partialTicks);
+		if (sell != null) {
+			sell.render(gui, mouseX, mouseY, partialTicks);
+		}
 		back.render(gui, mouseX, mouseY, partialTicks);
 	}
 
 	@Override
 	protected void renderSelectedData(GuiGraphics gui, int mouseX, int mouseY, float partialTicks) {
 		PoseStack matrixStack = gui.pose();
-		float tooltipPosX = width * 0.3333F;
+		float tooltipPosX = bottomRightBar.getPosX() + 8;
 		float tooltipPosY = height * 0.8F;
 
 		float iconPosY = boxM.getPosY() + 25;
@@ -235,7 +258,7 @@ public class ShopScreen extends MenuFilterable {
 			double offset = boxM.getWidth() * 0.1F;
 			matrixStack.translate(boxM.getX() + offset / 2, iconPosY, 1);
 			
-			List<ShopItem> list = ShopListRegistry.getInstance().getRegistry().get(KingdomKeys.rl(parent.invFile)).getList();
+			List<ShopItem> list = ShopListRegistry.getInstance().getRegistry().get(KingdomKeys.rl(invFile)).getList();
 			ShopItem item = null;
 			for(ShopItem shopItem : list) {
 				Item it = shopItem.getResult();
@@ -252,8 +275,9 @@ public class ShopScreen extends MenuFilterable {
 			}
 			if(item != null) {
 				gui.drawString(minecraft.font, Utils.translateToLocal(Strings.Gui_Shop_Buy_Cost)+" ", 2, -20, Color.yellow.getRGB());
-				String line = Utils.getFormattedNumber(item.getCost())+" "+Utils.translateToLocal(Strings.Gui_Menu_Main_Munny);
-				gui.drawString(minecraft.font, line, boxM.getWidth() - minecraft.font.width(line) - 10, -20, item.getCost() > playerData.getMunny() ? Color.RED.getRGB() : Color.GREEN.getRGB());
+				int price = ForetellerShop.priceFor(item, playerData, KingdomKeys.rl(invFile));
+				String line = Utils.getFormattedNumber(price)+" "+Utils.translateToLocal(item.getCurrency().getTranslationKey());
+				gui.drawString(minecraft.font, line, boxM.getWidth() - minecraft.font.width(line) - 10, -20, price > item.getCurrency().held(playerData) ? Color.RED.getRGB() : Color.GREEN.getRGB());
 
 				/*if(ModConfigs.SERVER.requireSynthTierShop.get()) {
 					gui.drawString(minecraft.font, Utils.translateToLocal(Strings.Gui_Shop_Tier) + " ", 2, -10, Color.yellow.getRGB());
@@ -272,7 +296,11 @@ public class ShopScreen extends MenuFilterable {
 		}
 		matrixStack.popPose();
 
-		if (selectedItemStack != null && selectedItemStack.getItem() instanceof KeybladeItem || selectedItemStack.getItem() instanceof KKAccessoryItem || selectedItemStack.getItem() instanceof KKArmorItem) {
+		if (selectedItemStack == null || selectedItemStack.isEmpty()) {
+			return;
+		}
+
+		if (isEquipment(selectedItemStack)) {
 			String desc = "";
 			ResourceLocation ability = null;
 			if(selectedItemStack.getItem() instanceof KeybladeItem kb) {
@@ -315,7 +343,31 @@ public class ShopScreen extends MenuFilterable {
 				}
 				matrixStack.popPose();
 			}
+		} else if (selectedItemStack.getItem() instanceof KKPotionItem potion) {
+			renderPotionStats(gui, matrixStack, potion);
 		}
+	}
+
+	private static boolean isEquipment(ItemStack stack) {
+		return stack.getItem() instanceof KeybladeItem || stack.getItem() instanceof KKAccessoryItem || stack.getItem() instanceof KKArmorItem;
+	}
+
+	private void renderPotionStats(GuiGraphics gui, PoseStack matrixStack, KKPotionItem potion) {
+		List<Component> stats = potion.getRestoreStats();
+
+		if (stats.isEmpty()) {
+			return;
+		}
+
+		matrixStack.pushPose();
+		{
+			matrixStack.translate(boxM.getX() + 20, height * 0.58, 1);
+
+			for (int i = 0; i < stats.size(); i++) {
+				gui.drawString(minecraft.font, stats.get(i), 0, -15 + (10 * i), 0x888888);
+			}
+		}
+		matrixStack.popPose();
 	}
 
 	@Override
@@ -325,7 +377,7 @@ public class ShopScreen extends MenuFilterable {
 
 	@Override
 	public void onClose() {
-		if (parent.moogle != -1) {
+		if (parent != null && parent.moogle != -1) {
 			PacketHandler.sendToServer(new CSCloseMoogleGUI(parent.moogle));
 		}
 		super.onClose();

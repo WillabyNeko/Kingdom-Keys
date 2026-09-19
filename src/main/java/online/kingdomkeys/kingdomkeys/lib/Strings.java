@@ -1,5 +1,7 @@
 package online.kingdomkeys.kingdomkeys.lib;
 
+import online.kingdomkeys.kingdomkeys.KingdomKeys;
+
 public class Strings {
     // Records
     public static final String
@@ -453,10 +455,10 @@ public class Strings {
 		    Stats_LevelUp_MP = "stats.levelUpMP",
 		    Stats_LevelUp_AP = "stats.levelUpAP",
 		    Stats_LevelUp_FormGauge = "stats.levelUpFG",
-			Stats_LevelUp_HighJump = "stats.levelUpHighJump",
 			Stats_LevelUp_MaxAccessories = "stats.levelUpMaxAccessories",
 			Stats_LevelUp_MaxArmors = "stats.levelUpMaxArmors",
 		    Stats_LevelUp_MaxMagics = "stats.levelUpMaxMagics",
+		    Stats_LevelUp_MaxItems = "stats.levelUpMaxItems",
 			Stats_LevelNext = "stats.levelNext",
 			Stats_MunnyGet = "stats.munnyGet";
 
@@ -486,6 +488,7 @@ public class Strings {
             Gui_Menu_Main = Gui_Menu + ".main",
             Gui_Menu_Main_Title = Gui_Menu_Main + ".title",
             Gui_Menu_Accept = Gui_Menu + ".accept",
+			Gui_Menu_Cancel = Gui_Menu + ".cancel",
             Gui_Menu_Back = Gui_Menu + ".back",
 
             Gui_Menu_Main_Button = Gui_Menu_Main + ".button",
@@ -499,6 +502,21 @@ public class Strings {
 			Gui_Menu_Main_Button_Style = Gui_Menu_Main_Button + ".style",
             Gui_Menu_Main_Synthesis_Tier = Gui_Menu_Main + ".synthesis_tier",
             Gui_Menu_Main_Munny = Gui_Menu_Main + ".munny",
+            Gui_Menu_Main_Lux = Gui_Menu_Main + ".lux",
+            Gui_Foreteller_Redeem = "gui.foreteller.redeem",
+            Gui_Foreteller_Train = "gui.foreteller.train",
+            Gui_Foreteller_Duel = "gui.foreteller.duel",
+            Gui_Duel_Level = "gui.duel.level",
+            Gui_Training_Reward = "gui.training.reward",
+            Gui_Level_Dynamic = "gui.level.dynamic",
+            Duel_Begin = "kingdomkeys.duel.begin",
+            Duel_Lost = "kingdomkeys.duel.lost",
+            Duel_Lost_Sub = "kingdomkeys.duel.lost.sub",
+            Training_Won = "kingdomkeys.training.won",
+            Training_Won_Sub = "kingdomkeys.training.won.sub",
+            Training_Lost = "kingdomkeys.training.lost",
+            Training_Left = "kingdomkeys.training.left",
+            Information_Title = "kingdomkeys.information.title",
             Gui_Menu_Main_Hearts = Gui_Menu_Main + ".hearts",
             Gui_Menu_Main_Time = Gui_Menu_Main + ".time",
             Gui_Menu_Main_Time_Spent = Gui_Menu_Main_Time + ".spent",
@@ -507,7 +525,7 @@ public class Strings {
             Gui_Menu_Items_Equipment = Gui_Menu_Items + ".equipment",
             Gui_Menu_Items_Stock = Gui_Menu_Items + ".stock",
             Gui_Menu_Items_Stock_Take = Gui_Menu_Items + ".stock.take",
-            Gui_Menu_Items_Stock_Take_Full = Gui_Menu_Items + ".stock.take.full",
+
             
             Gui_Menu_Items_Equipment_Weapon = Gui_Menu_Items_Equipment + ".weapon",
             Gui_Menu_Items_Equipment_Shotlock = Gui_Menu_Items_Equipment + ".shotlock",
@@ -516,7 +534,7 @@ public class Strings {
             Gui_Menu_Items_Equipment_Magic = Gui_Menu_Items_Equipment + ".magic",
             Gui_Menu_Items_Equipment_Pauldron = Gui_Menu_Items_Equipment + ".pauldron",
             Gui_Menu_Items_Equipment_Items = Gui_Menu_Items_Equipment + ".items",
-            
+
             Gui_Menu_Items_Equipment_Weapon_Keyblades = Gui_Menu_Items_Equipment_Weapon + ".keyblades",
             
             Gui_Menu_Customize = Gui_Menu + ".customize",
@@ -609,7 +627,6 @@ public class Strings {
 
             // Shop
             Gui_Shop = "gui.shop",
-            Gui_Shop_Page = Gui_Shop + ".page",
 	    	Gui_Shop_Tier = Gui_Shop + ".tier",
             Gui_Shop_Main = Gui_Shop + ".main",
             Gui_Shop_NoSpace = Gui_Shop + ".no_empty_slot",
@@ -646,6 +663,8 @@ public class Strings {
             Gui_Synthesis_Synthesise = Gui_Synthesis + ".synthesise",
 	    	Gui_Synthesis_Synthesise_Title = Gui_Synthesis_Synthesise + ".title",
             Gui_Synthesis_Synthesise_Create = Gui_Synthesis_Synthesise + ".create",
+            Gui_Synthesis_Synthesise_Track = Gui_Synthesis_Synthesise + ".track",
+            Gui_Synthesis_Synthesise_Untrack = Gui_Synthesis_Synthesise + ".untrack",
             
             Gui_Synthesis_Forge = Gui_Synthesis + ".forge",
 	    	Gui_Synthesis_Forge_Title = Gui_Synthesis_Forge + ".title",
@@ -695,8 +714,20 @@ public class Strings {
 
 			//Item get
 			Gui_ItemGet_Obtained = "gui.itemget.obtained",
-			Gui_ItemGet_Dismiss = "gui.itemget.dismiss";
+			Gui_ItemGet_Dismiss = "gui.itemget.dismiss",
 
+			//Org
+			Gui_Org = "gui.org",
+
+			//Shotlock + Minigame
+			Gui_Shotlock = "gui.shotlock",
+			Gui_Shotlock_Minigame = Gui_Shotlock + ".minigame";
+
+
+	//Containers
+	public static final String
+		Container_GummiShip = "container.gummi_ship",
+		Container_GummiHangar = "container.gummi_hangar";
 
 	//Items
 
@@ -1580,7 +1611,14 @@ public class Strings {
             SoA_ConfirmGuardian = "soa.confirm.guardian",
             SoA_ConfirmMystic = "soa.confirm.mystic",
             SoA_Confirm3 = "soa.confirm.3",
-            SoA_Confirm5 = "soa.confirm.5"
+            SoA_Confirm5 = "soa.confirm.5",
+            SoA_UnionIntro1 = "soa.union.intro.1",
+            SoA_UnionIntro2 = "soa.union.intro.2",
+            SoA_UnionConfirm = "soa.union.confirm",
+            SoA_UnionChosen1 = "soa.union.chosen.1",
+            SoA_UnionChosen2 = "soa.union.chosen.2",
+            UnionChoice = "soa.chat.union.choice",
+            UnionChoicePick = "soa.chat.union.pick"
     ;
     
     public static String
@@ -1592,7 +1630,12 @@ public class Strings {
 			COIntro1 = "co.intro.1", //In this place, to find is to lose
 			COIntro2 = "co.intro.2", //and to lose is to find.
 			COIntro3 = "co.intro.3", //That is the way in Castle Oblivion
-			COIntroTitle = "co.intro.title";
+			COIntroTitle = "co.intro.title",
+			COEncounter_Wave = "co.encounter.wave",
+			COEncounter_FinalWave = "co.encounter.final_wave",
+			COEncounter_End = "co.encounter.end";
+
+
 
 	//Map Cards
 	public static String
@@ -1667,4 +1710,90 @@ public class Strings {
 			ForestMemory = "forest_memory",
 			SwampMemory = "swamp_memory",
 			BadlandsMemory = "badlands_memory";
+
+	//Warning
+	public static String
+			WarningInformation = "warning.information",
+			WarningAP = "warning.ap",
+			WarningSell = "warning.sell",
+			WarningPartyDisband = "warning.party.disband",
+			WarningPartyLeave = "warning.party.leave",
+			WarningPartyKick = "warning.party.kick",
+			WarningShipOverwrite = "warning.ship.overwrite",
+			WarningPlateOccupied = "warning.gummi.plate_occupied",
+			WarningBannedBlocks = "warning.gummi.banned_blocks",
+			WarningNoCore = "warning.gummi.no_core",
+			WarningSingleCore = "warning.gummi.single_core",
+			WarningShipTooBig = "warning.gummi.ship_too_big",
+			WarningBlueprintTooBig = "warning.gummi.blueprint_too_big",
+			WarningFileTooBig = "warning.gummi.file_too_big",
+			WarningFileUnreadable = "warning.gummi.file_unreadable",
+			WarningStruggleRange = "warning.struggle.out_of_range",
+			WarningStockFull = "warning.stock.full";
+
+	//Gummi Stuff
+	public static String
+		Gummi = KingdomKeys.MODID + ".gummi",
+		Gummi_Block = Gummi + ".block",
+		Gummi_Blueprint = Gummi + ".blueprint",
+		Gummi_Hangar = Gummi + ".hangar",
+		Gummi_Phone = Gummi + ".phone";
+
+	//Dialogue
+	public static String
+		Dialogue = KingdomKeys.MODID + ".dialogue",
+		Dialogue_FirstMeeting = Dialogue + ".first_meeting",
+		Dialogue_FirstMeeting_Answer = Dialogue_FirstMeeting + ".answer",
+		Dialogue_Foreteller = Dialogue + ".foreteller",
+		Dialogue_Foreteller_Answer = Dialogue_Foreteller + ".answer",
+		Dialogue_Apprentice = Dialogue + ".apprentice",
+		Dialogue_Apprentice_Greeting = Dialogue_Apprentice + ".greeting",
+		Dialogue_Apprentice_Answer = Dialogue_Apprentice + ".answer";
+
+	//Misc
+	public static String
+		Information = KingdomKeys.MODID + ".information",
+		Poster = KingdomKeys.MODID + ".poster",
+		Struggle = KingdomKeys.MODID + ".struggle",
+		StruggleTournament = Struggle + ".tournament";
+
+	//Savepoint
+	public static String
+		Savepoint = "savepoint",
+		Savepoint_Tooltip = Savepoint + ".tooltip",
+		Savepoint_Stat = Savepoint + ".stat";
+
+	//Commands
+	public static String
+		Command = KingdomKeys.MODID + ".command",
+		Command_Ability = Command + ".ability",
+		Command_Check = Command + ".check",
+		Command_Choice = Command + ".choice",
+		Command_Convert = Command + ".convert",
+		Command_Dimension = Command + ".dimension",
+		Command_Dp = Command + ".dp",
+		Command_Drive = Command + ".drive",
+		Command_Synthlevel = Command + ".synthlevel",
+		Command_Union = Command + ".union",
+		Command_Exp = Command + ".exp",
+		Command_Focus = Command + ".focus",
+		Command_Hearts = Command + ".hearts",
+		Command_Level = Command + ".level",
+		Command_Material = Command + ".material",
+		Command_Lux = Command + ".lux",
+		Command_Story = Command + ".story",
+		Command_Munny = Command + ".munny",
+		Command_Pay = Command + ".pay",
+		Command_Recipe = Command + ".recipe";
+
+	//Messages
+	public static String
+		Message = "message",
+		Message_MagnetBlox = Message + ".magnet_blox",
+		Message_Chest = Message + ".chest",
+		Message_KK = Message + "." + KingdomKeys.MODID,
+		Message_Wayfinder = Message + ".wayfinder",
+		Message_Recipe = Message + ".recipe";
+
+
 }

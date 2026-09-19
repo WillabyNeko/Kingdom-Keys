@@ -5,7 +5,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ThrowableProjectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
@@ -90,8 +89,8 @@ public class FirazaEntity extends BaseMagicProjectile {
 
 			interactWithBlocks(rtRes, radius);
 
-			if(getOwner() instanceof Player) {
-				List<LivingEntity> list = Utils.getLivingEntitiesInRadiusExcludingParty((Player) getOwner(), radius);
+			if(getOwner() != null) {
+				List<LivingEntity> list = Utils.getLivingEntitiesInRadiusExcludingParty(getOwner(), radius);
 
 				((ServerLevel)level()).sendParticles(ParticleTypes.FLAME, getX(), getY(), getZ(), 1000, Math.random() - 0.5D, Math.random() - 0.5D, Math.random() - 0.5D, 0.3);
 

@@ -16,6 +16,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.Input;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
@@ -43,10 +44,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.*;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.api.distmarker.Dist;
@@ -73,6 +71,7 @@ import online.kingdomkeys.kingdomkeys.client.gui.elements.CommandMenuSubMenu;
 import online.kingdomkeys.kingdomkeys.client.gui.overlay.CommandMenuGui;
 import online.kingdomkeys.kingdomkeys.client.gui.overlay.ItemGetGui;
 import online.kingdomkeys.kingdomkeys.client.render.BossDeathRays;
+import online.kingdomkeys.kingdomkeys.client.render.item.KeychainRenderer;
 import online.kingdomkeys.kingdomkeys.client.shotlock.ShotlockMinigameClient;
 import online.kingdomkeys.kingdomkeys.client.sound.ModSounds;
 import online.kingdomkeys.kingdomkeys.config.ModConfigs;
@@ -89,6 +88,7 @@ import online.kingdomkeys.kingdomkeys.integration.epicfight.EpicFightUtils;
 import online.kingdomkeys.kingdomkeys.integration.shouldersurfing.KKShoulderSurfing;
 import online.kingdomkeys.kingdomkeys.item.KeybladeItem;
 import online.kingdomkeys.kingdomkeys.item.ModItems;
+import online.kingdomkeys.kingdomkeys.item.UnionApprenticeArmorItem;
 import online.kingdomkeys.kingdomkeys.item.WayfinderItem;
 import online.kingdomkeys.kingdomkeys.item.organization.IOrgWeapon;
 import online.kingdomkeys.kingdomkeys.lib.SoAState;
@@ -119,6 +119,15 @@ import java.util.ArrayList;
 import java.util.function.Supplier;
 
 public class ClientEvents {
+	@SubscribeEvent
+	public void onKeychainHolderPre(RenderLivingEvent.Pre<?, ?> event) {
+		KeychainRenderer.drawing(event.getEntity());
+	}
+
+	@SubscribeEvent
+	public void onKeychainHolderPost(RenderLivingEvent.Post<?, ?> event) {
+		KeychainRenderer.drawn();
+	}
 
 	@SubscribeEvent
 	public void onRenderBossDeath(RenderLivingEvent.Pre<?, ?> event) {
@@ -567,9 +576,9 @@ public class ClientEvents {
 
 		float partialTicks = mc.getTimer().getGameTimeDeltaPartialTick(false);
 
-		/*if (DEBUG_GUMMI_COLLISION) {
+		if (DEBUG_GUMMI_COLLISION) {
 			drawGummiCollision(mc, poseStack, buffer);
-		}*/
+		}
 
 		// Lock on
 		if (InputHandler.lockOn != null && ModConfigs.SERVER.softLockOnMode.get()) {
@@ -696,7 +705,7 @@ public class ClientEvents {
 				}
 
 				if(player.hasEffect(ModMobEffects.KO)) {
-					LivingEntityRenderer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> renderer = (LivingEntityRenderer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>>) Minecraft.getInstance().getEntityRenderDispatcher().getRenderer((AbstractClientPlayer) player);
+					LivingEntityRenderer<?, ?> renderer = event.getRenderer();
 					if (!((IDisabledAnimations) renderer).kingdom_Keys$isDisabled()) {
 						//Cancel the vanilla animation
 						event.setCanceled(true);
@@ -750,7 +759,7 @@ public class ClientEvents {
 
 					// Aerial Dodge rotation
 					if(playerData.getAerialDodgeTicks() > 0) {
-						LivingEntityRenderer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> renderer = (LivingEntityRenderer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>>) Minecraft.getInstance().getEntityRenderDispatcher().getRenderer((AbstractClientPlayer) player);
+						LivingEntityRenderer<?, ?> renderer = event.getRenderer();
 						if (!((IDisabledAnimations) renderer).kingdom_Keys$isDisabled()) {
 							float partialTicks = event.getPartialTick();
 							float time = player.tickCount + partialTicks;
@@ -861,7 +870,7 @@ public class ClientEvents {
 	}
 
 	// Hitbox render for gummi blocks
-	/*public static final boolean DEBUG_GUMMI_COLLISION = true;
+	public static final boolean DEBUG_GUMMI_COLLISION = false;
 	private static final int DEBUG_RANGE = 6;
 
 	private void drawGummiCollision(Minecraft mc, PoseStack poseStack, MultiBufferSource.BufferSource buffer) {
@@ -890,7 +899,7 @@ public class ClientEvents {
 
 		poseStack.popPose();
 		buffer.endBatch(RenderType.lines());
-	}*/
+	}
 
 	private static final double SUPERJUMP_BASE = 0.35D, SUPERJUMP_PER_STACK = 0.15D;
 	private static final double GRIND_SPEED = 0.8D;
@@ -1046,6 +1055,9 @@ public class ClientEvents {
 
 	private boolean recoveryHeld;
 
+	/** Whether the player had their feet on the floor as of the end of the previous tick. */
+	private boolean recoveryGrounded = true;
+
 	private void tickCombatWindows(Minecraft mc) {
 		LocalPlayer player = mc.player;
 
@@ -1064,7 +1076,10 @@ public class ClientEvents {
 		boolean pressed = jump && !recoveryHeld;
 		recoveryHeld = jump;
 
-		if (pressed && playerData.getRecoveryTicks() > 0 && !player.onGround()) {
+		boolean grounded = recoveryGrounded;
+		recoveryGrounded = player.onGround();
+
+		if (pressed && !grounded && playerData.getRecoveryTicks() > 0 && !player.onGround()) {
 			playerData.setRecoveryTicks(0);
 			// Done here as well as on the server so it answers the key straight away instead of a bit later
 			player.setDeltaMovement(0, Math.min(0, player.getDeltaMovement().y) * 0.1, 0);
@@ -1105,6 +1120,11 @@ public class ClientEvents {
 		if (player.isCrouching() || player.getAbilities().flying) {
 			stopGrind(player, false);
 			return;
+		}
+
+		PlayerData playerData = PlayerData.get(player);
+		if (playerData != null && !playerData.inFlowmotion()) {
+			PacketHandler.sendToServer(new CSSetFlowmotionPacket(true));
 		}
 
 		// Reversing direction
@@ -1668,6 +1688,13 @@ public class ClientEvents {
 				Color colour = new Color(itemColor);
 				return colour.getRGB();
 			}, ModItems.wayfinder.get());
+			event.register((stack, tintIndex) -> {
+				if (stack.getItem() instanceof UnionApprenticeArmorItem armor) {
+					int rgb = tintIndex == 1 ? armor.getSecondaryColor(stack) : armor.getPrimaryColor(stack);
+					return 0xFF000000 | rgb;
+				}
+				return 0xFFFFFFFF;
+			}, ModItems.apprentice_Chestplate.get(), ModItems.apprentice_Leggings.get(), ModItems.apprentice_Boots.get());
 			event.register(ModBusEvents::getGummiBlockColour, ModBlocks.gummiBlocks.get().stream().map(Supplier::get).toList().toArray(new Block[0]));
 			event.register(ModBusEvents::getGummiBlockColour, ModBlocks.gummiBubbleHelms.stream().map(Supplier::get).toList().toArray(new Block[0]));
 			event.register(ModBusEvents::getGummiBlockColour, ModBlocks.gummiMiniHelms.stream().map(Supplier::get).toList().toArray(new Block[0]));

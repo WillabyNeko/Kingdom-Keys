@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import online.kingdomkeys.kingdomkeys.client.gui.SavePointScreen;
 import online.kingdomkeys.kingdomkeys.entity.block.SavepointTileEntity;
 import online.kingdomkeys.kingdomkeys.lib.Strings;
@@ -29,7 +30,7 @@ public class SavePointButton extends ScrollableButtonBase {
 
     @Override
     protected void renderWidget(GuiGraphics gui, int pMouseX, int pMouseY, float pPartialTick) {
-        isHovered = isMouseOver(pMouseX, pMouseY);
+        isHovered = isMouseOver(pMouseX, pMouseY) || isMouseOverInactive(pMouseX, pMouseY);
         int labelHeight = Minecraft.getInstance().font.lineHeight + 2;
         if (visible) {
             if (!active || isHovered) {
@@ -49,28 +50,36 @@ public class SavePointButton extends ScrollableButtonBase {
                     return;
 
                 if(Minecraft.getInstance().level.getBlockEntity(sPoint.pos()) instanceof SavepointTileEntity savepoint){
-                    Tooltip tooltip = Tooltip.create(Component.literal(
-                      "UUID: "+savepoint.getID()+
-                            "\nDimension: "+sPoint.dimension().location()+
-                            "\nOwner: "+sPoint.owner().getSecond()+
-                            "\nHealing: "+ Utils.getSavepointPercent(savepoint.getHeal())+
-                            "%\nFood: "+Utils.getSavepointPercent(savepoint.getHunger())+
-                            "%\nMagic: "+Utils.getSavepointPercent(savepoint.getMagic())+
-                            "%\nFocus: "+Utils.getSavepointPercent(savepoint.getFocus())+
-                            "%\nDrive: "+Utils.getSavepointPercent(savepoint.getDrive())+"%"));
-                    setTooltip(tooltip);
+                    MutableComponent text = Component.literal("UUID: "+savepoint.getID())
+                            .append(line("savepoint.tooltip.dimension", sPoint.dimension().location().toString()))
+                            .append(line("savepoint.tooltip.owner", sPoint.owner().getSecond()))
+                            .append(stat("savepoint.stat.hp", savepoint.getHeal()))
+                            .append(stat("savepoint.stat.hunger", savepoint.getHunger()))
+                            .append(stat("savepoint.stat.mp", savepoint.getMagic()))
+                            .append(stat("savepoint.stat.focus", savepoint.getFocus()))
+                            .append(stat("savepoint.stat.drive", savepoint.getDrive()));
+                    setTooltip(Tooltip.create(text));
                 }
-                drawLabel(getMessage(), gui, labelHeight);
 
+                if (active) {
+                    drawLabel(getMessage(), gui, labelHeight);
+                }
             }
             if (parent.hovered == null || !parent.hovered.equals(destination)) {
                 drawDark(gui, Color.BLACK);
             }
         }
         if (!active) {
-            //gui.drawCenteredString(Minecraft.getInstance().font, Component.translatable("kingdomkeys.save_point.you_are_here"), getX() + (getWidth() / 2), getY() + (getHeight() - (height/2) - (Minecraft.getInstance().font.lineHeight/2)) + 1, Color.WHITE.getRGB());
             drawLabel(Component.translatable(Strings.Gui_Save_Main_CurrentPosition), gui, labelHeight);
         }
+    }
+
+    private static MutableComponent line(String key, String value) {
+        return Component.literal("\n").append(Component.translatable(key)).append(": " + value);
+    }
+
+    private static MutableComponent stat(String key, int value) {
+        return line(key, Utils.getSavepointPercent(value) + "%");
     }
 
     public void drawDark(GuiGraphics gui, Color colour) {
@@ -80,7 +89,7 @@ public class SavePointButton extends ScrollableButtonBase {
     }
 
     public void drawLabel(Component text, GuiGraphics gui, int labelHeight) {
-        gui.setColor(1, 1, 1, 0.5F);
+        gui.setColor(1, 1, 1, SavePointExtrasButton.EXTRA_BUTTON_ALPHA_BG);
         gui.fill(getX(), getY() + (getHeight() - labelHeight), getX() + getWidth(), getY() + getHeight(), Color.BLACK.getRGB());
         gui.setColor(1, 1, 1, 1);
         if (Minecraft.getInstance().font.width(getMessage().getVisualOrderText()) > getWidth()) {

@@ -14,7 +14,9 @@ import online.kingdomkeys.kingdomkeys.leveling.Level;
 import online.kingdomkeys.kingdomkeys.leveling.ModLevels;
 
 public enum SoAState implements StringRepresentable {
-    NONE("none", (byte)0), CHOICE("choice", (byte)1), SACRIFICE("sacrifice", (byte)2), CONFIRM("confirm", (byte)3), COMPLETE("complete", (byte)4), WARRIOR("warrior", (byte)5), GUARDIAN("guardian", (byte)6), MYSTIC("mystic", (byte)7);
+    NONE("none", (byte)0), CHOICE("choice", (byte)1), SACRIFICE("sacrifice", (byte)2), CONFIRM("confirm", (byte)3), COMPLETE("complete", (byte)4),
+	WARRIOR("warrior", (byte)5), GUARDIAN("guardian", (byte)6), MYSTIC("mystic", (byte)7),
+    UNION("union", (byte)8);
 
     private final String name;
     private final byte b;
@@ -115,6 +117,10 @@ public enum SoAState implements StringRepresentable {
 
 		if (choice.getMaxMagics(choiceLevel) != 0) {
 			playerData.addMaxMagics(choice.getMaxMagics(choiceLevel));
+		}
+
+		if (choice.getMaxItems(choiceLevel) != 0) {
+			playerData.addMaxItems(choice.getMaxItems(choiceLevel));
 		}
 	}
     

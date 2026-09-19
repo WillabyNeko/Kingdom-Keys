@@ -4,10 +4,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
+import online.kingdomkeys.kingdomkeys.KingdomKeys;
 import online.kingdomkeys.kingdomkeys.ability.ModAbilities;
 import online.kingdomkeys.kingdomkeys.client.sound.ModSounds;
 import online.kingdomkeys.kingdomkeys.config.ModConfigs;
 import online.kingdomkeys.kingdomkeys.data.PlayerData;
+import online.kingdomkeys.kingdomkeys.integration.epicfight.EpicFightEvents;
 import online.kingdomkeys.kingdomkeys.network.PacketHandler;
 
 import java.util.Optional;
@@ -53,7 +55,21 @@ public class DriveFormAnti extends DriveForm {
 			if(getDriveSound() != null)
 				player.level().playSound(null, player.blockPosition(), getDriveSound(), SoundSource.MASTER, 1.0f, 1.0f);
 			pushEntities(player);
+			if (KingdomKeys.efmLoaded) {
+				EpicFightEvents.refreshLivingMotions(player);
+			}
 			PacketHandler.syncToAllAround(player, playerData);
+		}
+	}
+
+	@Override
+	public void updateDrive(Player player) {
+		PlayerData playerData = PlayerData.get(player);
+
+		if (playerData.getFP() > 0) {
+			playerData.setFP(playerData.getFP() - 0.3);
+		} else {
+			endDrive(player);
 		}
 	}
 

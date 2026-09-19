@@ -9,6 +9,7 @@ import online.kingdomkeys.kingdomkeys.KingdomKeys;
 import online.kingdomkeys.kingdomkeys.datagen.builder.ShopBuilder;
 import online.kingdomkeys.kingdomkeys.item.ModItems;
 import online.kingdomkeys.kingdomkeys.lib.Strings;
+import online.kingdomkeys.kingdomkeys.synthesis.shop.Currency;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -50,6 +51,29 @@ public class ShopDataProvider implements DataProvider {
 	public CompletableFuture<?> run(CachedOutput cache) {
 		Map<String, JsonArray> shops = new LinkedHashMap<>();
 
+		shops.put("default", buildDefaultShop());
+
+		shops.put("cards", buildCardsShop());
+		shops.put("special", buildSpecialShop());
+		shops.put("names/default", buildDefaultNames());
+		shops.put("names/special", buildSpecialNames());
+
+		// One per union: their Foreteller hands over his own keychain and robes, and only for Lux
+		shops.put("foreteller/unicornis", buildForetellerShop(Strings.irasKeybladeChain, Strings.ira));
+		shops.put("foreteller/leopardos", buildForetellerShop(Strings.gulasKeybladeChain, Strings.gula));
+		shops.put("foreteller/vulpes", buildForetellerShop(Strings.avasKeybladeChain, Strings.ava));
+		shops.put("foreteller/anguis", buildForetellerShop(Strings.invisKeybladeChain, Strings.invi));
+		shops.put("foreteller/ursus", buildForetellerShop(Strings.acedsKeybladeChain, Strings.aced));
+
+		CompletableFuture<?>[] futures = shops.entrySet().stream().map(entry -> {
+			Path path = pathProvider.json(KingdomKeys.rl(entry.getKey()));
+			return DataProvider.saveStable(cache, entry.getValue(), path);
+		}).toArray(CompletableFuture[]::new);
+
+		return CompletableFuture.allOf(futures);
+	}
+
+	static JsonArray buildDefaultShop() {
 		JsonArray defaultShop = new JsonArray();
 
 		JsonObject names = new JsonObject();
@@ -223,18 +247,32 @@ public class ShopDataProvider implements DataProvider {
 		defaultShop.add(shop(Strings.BlueCardPack, 1, 1, 3500));
 		defaultShop.add(shop(Strings.RandomCardPack, 1, 1, 3200));
 
-		shops.put("default", defaultShop);
-		shops.put("cards", buildCardsShop());
-		shops.put("special", buildSpecialShop());
-		shops.put("names/default", buildDefaultNames());
-		shops.put("names/special", buildSpecialNames());
+		return defaultShop;
+	}
 
-		CompletableFuture<?>[] futures = shops.entrySet().stream().map(entry -> {
-			Path path = pathProvider.json(KingdomKeys.rl(entry.getKey()));
-			return DataProvider.saveStable(cache, entry.getValue(), path);
-		}).toArray(CompletableFuture[]::new);
+	private static final int PRICE_APPRENTICE_CLOTH = 250;
+	private static final int PRICE_FORETELLER_KEYCHAIN = 5000;
+	private static final int PRICE_FORETELLER_ROBES = 600;
 
-		return CompletableFuture.allOf(futures);
+	private static JsonArray buildForetellerShop(String keychain, String armourName) {
+		JsonArray shop = new JsonArray();
+
+		shop.add(lux(shop("apprentice_" + Strings.chestplate, 1, 1, PRICE_APPRENTICE_CLOTH)));
+		shop.add(lux(shop("apprentice_" + Strings.leggings, 1, 1, PRICE_APPRENTICE_CLOTH)));
+		shop.add(lux(shop("apprentice_" + Strings.boots, 1, 1, PRICE_APPRENTICE_CLOTH)));
+
+		shop.add(lux(shop(keychain, 1, 1, PRICE_FORETELLER_KEYCHAIN)));
+
+		shop.add(lux(shop(armourName + "_" + Strings.helmet, 1, 1, PRICE_FORETELLER_ROBES)));
+		shop.add(lux(shop(armourName + "_" + Strings.chestplate, 1, 1, PRICE_FORETELLER_ROBES)));
+		shop.add(lux(shop(armourName + "_" + Strings.leggings, 1, 1, PRICE_FORETELLER_ROBES)));
+		shop.add(lux(shop(armourName + "_" + Strings.boots, 1, 1, PRICE_FORETELLER_ROBES)));
+		return shop;
+	}
+
+	private static JsonObject lux(JsonObject obj) {
+		obj.addProperty("currency", Currency.LUX.getSerializedName());
+		return obj;
 	}
 
 	private static void addMaterialSet(JsonArray shop, String baseName) {

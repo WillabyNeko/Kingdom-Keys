@@ -25,6 +25,7 @@ import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
@@ -59,6 +60,8 @@ import online.kingdomkeys.kingdomkeys.api.item.ItemCategory;
 import online.kingdomkeys.kingdomkeys.client.gui.elements.HUD.*;
 import online.kingdomkeys.kingdomkeys.config.ModConfigs;
 import online.kingdomkeys.kingdomkeys.data.PlayerData;
+import online.kingdomkeys.kingdomkeys.driveform.DriveForm;
+import online.kingdomkeys.kingdomkeys.driveform.ModDriveForms;
 import online.kingdomkeys.kingdomkeys.entity.mob.BaseKHEntity;
 import online.kingdomkeys.kingdomkeys.handler.ClientEvents;
 import online.kingdomkeys.kingdomkeys.item.KeybladeItem;
@@ -95,37 +98,68 @@ public class ClientUtils {
         matrixStack.popPose();
     }
 
-    public static void drawGloveAndDot(GuiGraphics gui, float ox, float oy, float width, float partialTicks) {
+    /** How far the glove and the dot swing to either side. */
+    public static final float SWAY_X = 4.5F;
+
+    public static final int GLOVE_U = 21, GLOVE_V = 204, GLOVE_W = 21, GLOVE_H = 14;
+
+    /**
+     * How far round the swing is, this frame.
+     *
+     * <p>It reads the frame timer itself rather than taking a number. A screen is handed the ticks
+     * elapsed since the last frame, not how far it is between two ticks, so interpolating with what
+     * the caller was given left this stepping once a tick and looking rough. Every caller of this
+     * happens to be inside a screen.</p>
+     */
+    private static float ballRotation() {
+        float delta = ClientEvents.ballRot - ClientEvents.prevBallRot;
+
+        if (delta < -180F)
+            delta += 360F;
+        if (delta > 180F)
+            delta -= 360F;
+
+        float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
+
+        return ClientEvents.prevBallRot + delta * partialTick;
+    }
+
+    /**
+     * Where in its swing the glove is.
+     *
+     * <p>The menus have it drifting side to side rather than sitting still, and anything else that
+     * points at a choice has to keep the same time or the two look wrong side by side.</p>
+     *
+     * @return how far to shift it, in pixels either way
+     */
+    public static float gloveSway() {
+        float t = (float) Math.toRadians(-ballRotation());
+
+        return (float) Math.cos(t * 3F + Math.PI / 2F) * SWAY_X;
+    }
+
+    public static void drawGloveAndDot(GuiGraphics gui, float ox, float oy, float width) {
         float ballScale = 0.5F;
         int u = 0;
         int v = 204;
 
         gui.pose().pushPose();
         {
-            float radiusX = 4.5F;
+            float radiusX = SWAY_X;
             float radiusY = 6F;
-            float centerX = ox + width - radiusX -3;
+            float centerX = ox + width - radiusX - 3;
             float centerY = oy + 3;
 
-            float delta = ClientEvents.ballRot - ClientEvents.prevBallRot;
+            float t = (float) Math.toRadians(-ballRotation());
 
-            if (delta < -180F)
-                delta += 360F;
-            if (delta > 180F)
-                delta -= 360F;
-
-            float interpRot = ClientEvents.prevBallRot + delta * partialTicks;
-
-            float t = (float)Math.toRadians(-interpRot);
-
-            float x = centerX + (float)Math.cos(t * 3F + Math.PI / 2F) * radiusX;
+            float x = centerX + gloveSway();
             float y = centerY + (float)Math.sin(t * 2F) * radiusY;
 
             float gloveX = x - width - 10;
             gui.pose().pushPose();
             {
                 gui.pose().translate(gloveX, oy + 3, 0);
-                gui.blit(Constants.MENU_TEXTURE, 0, 0, 21, 204, 20, 14);
+                gui.blit(Constants.MENU_TEXTURE, 0, 0, GLOVE_U, GLOVE_V, GLOVE_W, GLOVE_H);
             }
             gui.pose().popPose();
             gui.pose().pushPose();
@@ -180,6 +214,7 @@ public class ClientUtils {
     public static final HUDElement GUMMI_INFO_ELEMENT = new HUDElement("GummiInfo");
     public static final HUDElement GUMMI_READOUT_ELEMENT = new HUDElement("GummiReadout");
     public static final HUDElement GUMMI_CONTROLS_ELEMENT = new HUDElement("GummiControls");
+    public static final HUDElement SYNTHESIS_TRACKER_ELEMENT = new HUDElement("SynthesisTracker");
 
     public static Entity getEntityByUUIDClient(UUID uuid) {
         Minecraft mc = Minecraft.getInstance();
@@ -769,6 +804,21 @@ public class ClientUtils {
                             false, false)).setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY).setDepthTestState(RenderStateShard.NO_DEPTH_TEST).setWriteMaskState(RenderStateShard.COLOR_WRITE).setLightmapState(RenderStateShard.NO_LIGHTMAP)
                     .setOverlayState(RenderStateShard.NO_OVERLAY).createCompositeState(true));
 
+    private static final Map<ResourceLocation, RenderType> ARMOR_TRANSLUCENT_NO_CULL = new HashMap<>();
+
+    public static RenderType armorTranslucentNoCull(ResourceLocation texture) {
+        return ARMOR_TRANSLUCENT_NO_CULL.computeIfAbsent(texture, t -> RenderType.create(KingdomKeys.MODID + ":armor_translucent_no_cull", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 1536, true, false,
+                RenderType.CompositeState.builder()
+                        .setShaderState(RenderStateShard.RENDERTYPE_ARMOR_CUTOUT_NO_CULL_SHADER)
+                        .setTextureState(new RenderStateShard.TextureStateShard(t, false, false))
+                        .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                        .setCullState(RenderStateShard.NO_CULL)
+                        .setLightmapState(RenderStateShard.LIGHTMAP)
+                        .setOverlayState(RenderStateShard.OVERLAY)
+                        .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+                        .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                        .createCompositeState(true)));
+    }
 
     //Lock on
     public static void drawLockOnIndicator(int entityID, PoseStack poseStack, MultiBufferSource buffer, float partialTicks) {
@@ -947,7 +997,7 @@ public class ClientUtils {
     /**
      * Used in the KO system so it doesn't rotate
      */
-    public static void renderNameTag(LivingEntityRenderer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> renderer, LivingEntity entity, String displayName, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, float partialTick) {
+    public static void renderNameTag(LivingEntityRenderer<?, ?> renderer, LivingEntity entity, String displayName, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, float partialTick) {
         EntityRenderDispatcher dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
 
         double d0 = dispatcher.distanceToSqr(entity);
@@ -1392,7 +1442,7 @@ public class ClientUtils {
     private static void blitNineSliceInnerSegment(GuiGraphics guiGraphics, BufferBuilder bufferBuilder, TextureAtlasSprite sprite, int x, int y, int width, int height, int uPosition, int vPosition, int spriteWidth, int spriteHeight, int nineSliceWidth, int nineSliceHeight, int blitOffset, boolean innerStretch) {
         if (width > 0 && height > 0) {
             if (innerStretch) {
-                innerBlit(guiGraphics, bufferBuilder, sprite.atlasLocation(), x, x + width, y, y + height, sprite.getU((float)uPosition / (float)nineSliceWidth), sprite.getU((float)(uPosition + spriteWidth) / (float)nineSliceWidth), sprite.getV((float)vPosition / (float)nineSliceHeight), sprite.getV((float)(vPosition + spriteHeight) / (float)nineSliceHeight), blitOffset);
+                innerBlit(guiGraphics, bufferBuilder, x, x + width, y, y + height, sprite.getU((float)uPosition / (float)nineSliceWidth), sprite.getU((float)(uPosition + spriteWidth) / (float)nineSliceWidth), sprite.getV((float)vPosition / (float)nineSliceHeight), sprite.getV((float)(vPosition + spriteHeight) / (float)nineSliceHeight), blitOffset);
             } else {
                 blitTiledSprite(guiGraphics, bufferBuilder, sprite, x, y, width, height, uPosition, vPosition, spriteWidth, spriteHeight, nineSliceWidth, nineSliceHeight, blitOffset);
             }
@@ -1420,14 +1470,14 @@ public class ClientUtils {
 
     private static void blitSprite(GuiGraphics guiGraphics, BufferBuilder bufferBuilder, TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset) {
         if (width != 0 && height != 0) {
-            innerBlit(guiGraphics, bufferBuilder, sprite.atlasLocation(), x, x + width, y, y + height, sprite.getU0(), sprite.getU1(), sprite.getV0(), sprite.getV1(), blitOffset);
+            innerBlit(guiGraphics, bufferBuilder, x, x + width, y, y + height, sprite.getU0(), sprite.getU1(), sprite.getV0(), sprite.getV1(), blitOffset);
         }
 
     }
 
     private static void blitSprite(GuiGraphics guiGraphics, BufferBuilder bufferBuilder, TextureAtlasSprite sprite, int textureWidth, int textureHeight, int uPosition, int vPosition, int x, int y, int uWidth, int vHeight, int blitOffset) {
         if (uWidth != 0 && vHeight != 0) {
-            innerBlit(guiGraphics, bufferBuilder, sprite.atlasLocation(), x, x + uWidth, y, y + vHeight, sprite.getU((float)uPosition / (float)textureWidth), sprite.getU((float)(uPosition + uWidth) / (float)textureWidth), sprite.getV((float)vPosition / (float)textureHeight), sprite.getV((float)(vPosition + vHeight) / (float)textureHeight), blitOffset);
+            innerBlit(guiGraphics, bufferBuilder, x, x + uWidth, y, y + vHeight, sprite.getU((float)uPosition / (float)textureWidth), sprite.getU((float)(uPosition + uWidth) / (float)textureWidth), sprite.getV((float)vPosition / (float)textureHeight), sprite.getV((float)(vPosition + vHeight) / (float)textureHeight), blitOffset);
         }
 
     }
@@ -1458,7 +1508,91 @@ public class ClientUtils {
         return file;
     }
 
-    private static void innerBlit(GuiGraphics guiGraphics, BufferBuilder bufferBuilder, ResourceLocation atlasLocation, int x1, int x2, int y1, int y2, float minU, float maxU, float minV, float maxV, int blitOffset) {
+    /**
+     * Swaps the placeholders in a line of text for what they stand for right now: {player}, {union},
+     * {level}, {world}, {munny}, {lux}, {hearts}, {hp}, {maxhp}, {mp}, {maxmp}, {keyblade}, {drive}.
+     */
+    public static String fillTokens(String text) {
+        return fillTokens(text, null);
+    }
+
+    public static String fillTokens(String text, Entity speaker) {
+        if (text == null || text.indexOf('{') < 0) {
+            return text;
+        }
+
+        if (speaker != null) {
+            text = text.replace("{speaker}", speaker.getName().getString());
+        }
+
+        Player player = Minecraft.getInstance().player;
+
+        if (player == null) {
+            return text;
+        }
+
+        text = text.replace("{player}", player.getName().getString());
+        text = text.replace("{hp}", String.valueOf(Mth.ceil(player.getHealth())));
+
+        PlayerData playerData = PlayerData.get(player);
+
+        if (playerData != null) {
+            text = text.replace("{union}", Component.translatable(playerData.getUnion().getTranslationKey()).getString());
+            text = text.replace("{level}", String.valueOf(playerData.getLevel()));
+
+            text = text.replace("{munny}", String.valueOf(playerData.getMunny()));
+            text = text.replace("{lux}", String.valueOf(playerData.getLux()));
+            text = text.replace("{hearts}", String.valueOf(playerData.getHearts()));
+
+            text = text.replace("{maxhp}", String.valueOf(playerData.getMaxHP()));
+            text = text.replace("{mp}", String.valueOf(Mth.ceil(playerData.getMP())));
+            text = text.replace("{maxmp}", String.valueOf(Mth.ceil(playerData.getMaxMP())));
+
+            text = text.replace("{keyblade}", playerData.getEquippedWeapon().getHoverName().getString());
+            text = text.replace("{drive}", driveFormName(playerData.getActiveDriveForm()));
+        }
+
+        if (Minecraft.getInstance().level != null) {
+            text = text.replace("{world}", worldName(Minecraft.getInstance().level.dimension().location()));
+        }
+
+        return text;
+    }
+
+    /** @return the form's name, or nothing at all when they are walking around as themselves */
+    private static String driveFormName(ResourceLocation form) {
+        DriveForm drive = form == null ? null : ModDriveForms.registry.get(form);
+        return drive == null ? "" : Component.translatable(drive.getTranslationKey()).getString();
+    }
+
+    /**
+     * What to call a world on screen: its own translation if somebody wrote one, otherwise the
+     * dimension path tidied up into words.
+     */
+    public static String worldName(ResourceLocation dimension) {
+        String path = dimension.getPath();
+        String key = "kingdomkeys.worldmap.world." + path;
+
+        if (I18n.exists(key)) {
+            return I18n.get(key);
+        }
+
+        StringBuilder name = new StringBuilder();
+
+        for (String word : path.split("_")) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            if (!name.isEmpty()) {
+                name.append(' ');
+            }
+            name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+
+        return name.toString();
+    }
+
+    private static void innerBlit(GuiGraphics guiGraphics, BufferBuilder bufferBuilder, int x1, int x2, int y1, int y2, float minU, float maxU, float minV, float maxV, int blitOffset) {
         Matrix4f matrix4f = guiGraphics.pose().last().pose();
         bufferBuilder.addVertex(matrix4f, (float)x1, (float)y1, (float)blitOffset).setUv(minU, minV);
         bufferBuilder.addVertex(matrix4f, (float)x1, (float)y2, (float)blitOffset).setUv(minU, maxV);

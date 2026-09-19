@@ -1,0 +1,59 @@
+{
+  "arena_radius": 9,
+  "encounter": {
+    "type": "kingdomkeys:wave",
+    "interval_ticks": 60,
+    "spawn_delay_ticks": 7,
+    "waves": [
+      {
+        "spawns": [
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb"
+        ]
+      },
+      {
+        "spawns": [
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb"
+        ]
+      },
+      {
+        "spawns": [
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb"
+        ]
+      },
+      {
+        "spawns": [
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb",
+          "kingdomkeys:dark_training_orb"
+        ]
+      }
+    ]
+  },
+  "experience": 700,
+  "grants": "kingdomkeys:training/hard",
+  "info": "kingdomkeys.information.training",
+  "level": 60,
+  "lux": 400,
+  "requires": [
+    "kingdomkeys:training/medium",
+    "kingdomkeys:story/training_done"
+  ],
+  "rewards": [],
+  "spawn_points": 10
+}

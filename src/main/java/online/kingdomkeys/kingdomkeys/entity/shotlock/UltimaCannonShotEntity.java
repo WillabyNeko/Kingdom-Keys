@@ -8,7 +8,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ThrowableProjectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
@@ -132,7 +131,7 @@ public class UltimaCannonShotEntity extends BaseShotlockShotEntity {
 			level().playSound(null, getX(), getY(), getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.3F, 0.8F);
 
 			List<Entity> list = level().getEntities(getOwner(), getBoundingBox().inflate(8));
-			list = Utils.removePartyMembersFromList((Player) getOwner(), list);
+			list = Utils.removePartyMembersFromList(getOwner(), list);
 
 			if (!list.isEmpty()) {
 				for (Entity e : list) {

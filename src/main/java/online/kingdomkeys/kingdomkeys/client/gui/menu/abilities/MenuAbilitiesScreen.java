@@ -88,6 +88,11 @@ public class MenuAbilitiesScreen extends MenuBackground {
 			if (Utils.getConsumedAP(playerData) + apCost > playerData.getMaxAP(true)) {
 				return;
 			}
+
+			// Taking one off is always allowed, so this only blocks equipping one
+			if (!Utils.canEquipAbility(playerData, ability)) {
+				return;
+			}
 		}
 		boolean cancelled;
 		if (playerData.isAbilityEquipped(ability.getRegistryName(), index)) {
@@ -248,7 +253,6 @@ public class MenuAbilitiesScreen extends MenuBackground {
 		} else { //Drive form displays with disabled and equipped buttons
 			//Display list of abilities in the drive form data
 			DriveForm driveForm = ModDriveForms.registry.get(form);
-			//TODO                  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 			if(driveForm.getBaseGrowthAbilities()) { //If the selected drive form inherits base form growth abilities
 				for (int i = 0; i < abilitiesMap.size(); i++) {
 					ResourceLocation abilityName = (ResourceLocation) abilitiesMap.keySet().toArray()[i];
@@ -381,7 +385,7 @@ public class MenuAbilitiesScreen extends MenuBackground {
                     String abilityName = menuAbilitiesButton.getText();
                     Ability ability = ModAbilities.registry.get(KingdomKeys.rl(abilityName));
 
-                    if (ability.getAPCost() > playerData.getMaxAP(true) - Utils.getConsumedAP(playerData)) {
+                    if (ability.getAPCost() > playerData.getMaxAP(true) - Utils.getConsumedAP(playerData) || !Utils.canEquipAbility(playerData, ability)) {
                         menuAbilitiesButton.active = menuAbilitiesButton.equipped;
                     }
 
